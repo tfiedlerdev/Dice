@@ -4,7 +4,6 @@ import android.content.Context
 import android.opengl.GLES20
 import tfdev.engine3d.gpu.shader.OpenGLProgram
 import tfdev.engine3d.gpu.shader.Shader
-import java.nio.FloatBuffer
 
 class GLCube(context: Context) : GLObject3D() {
 
@@ -22,7 +21,7 @@ class GLCube(context: Context) : GLObject3D() {
         0, 1, 2, // left side 1
         1, 3, 2, // left side 2
         6, 5, 4, // right side 1
-        6, 3, 5, // right side 2
+        6, 7, 5, // right side 2
         5, 1, 0, // bottom side 1
         0, 4, 5, //bottom side 2
         2, 3, 7, // top side 1

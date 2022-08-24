@@ -11,7 +11,7 @@ class GLRender3DView(context: Context): GLSurfaceView(context) {
     init {
 
         // Create an OpenGL ES 2.0 context
-        setEGLContextClientVersion(2)
+        setEGLContextClientVersion(3)
 
         renderer = GLRenderer(getContext())
 
@@ -42,6 +42,5 @@ class GLRender3DView(context: Context): GLSurfaceView(context) {
     }
 
     companion object{
-        private const val TOUCH_SCALE_FACTOR: Float = 180.0f / 320f
     }
 }
