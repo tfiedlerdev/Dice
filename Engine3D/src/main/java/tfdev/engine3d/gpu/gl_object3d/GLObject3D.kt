@@ -18,7 +18,7 @@ abstract class GLObject3D : Transform() {
     open val drawListBuffer: ShortBuffer? = null
     open val drawListLength: Int? = null
     open val uvBuffer: FloatBuffer? = null
-
+    open val normalBuffer: FloatBuffer? = null
 
     fun addChild(obj: GLObject3D) {
         obj.parent = this
@@ -94,10 +94,8 @@ abstract class GLObject3D : Transform() {
             if (uvBuffer != null) {
                 val uvHandle = glGetAttribLocation(program, "vUV")
 
-                // Enable a handle to the triangle vertices
                 glEnableVertexAttribArray(uvHandle)
 
-                // Prepare the triangle coordinate data
                 glVertexAttribPointer(
                     uvHandle,
                     2,
@@ -105,6 +103,23 @@ abstract class GLObject3D : Transform() {
                     false,
                     4*2,
                     uvBuffer
+                )
+            }
+            val normalBuffer = normalBuffer
+            if (normalBuffer != null) {
+                val normalHandle = glGetAttribLocation(program, "vNormal")
+
+
+                glEnableVertexAttribArray(normalHandle)
+
+
+                glVertexAttribPointer(
+                    normalHandle,
+                    3,
+                    GL_FLOAT,
+                    false,
+                    4*3,
+                    normalBuffer
                 )
             }
             // Draw the triangle

@@ -8,5 +8,5 @@ in vec3 normal;
 void main() {
 
     vec3 normColor = normal/2. + 0.5;
-    fragColor = vec4(uv.x*normColor.x, uv.y*normColor.y, normColor.z, 1.);
+    fragColor = vec4(uv.x, uv.y, 0., 1.);
 }
