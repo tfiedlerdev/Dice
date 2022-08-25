@@ -14,6 +14,10 @@ open class VecBase(protected val values: FloatArray, size: Int) {
             }
         }
 
+    fun data(): FloatArray{
+        return values
+    }
+
     operator fun get(index: Int): Float {
         return values[index]
     }
