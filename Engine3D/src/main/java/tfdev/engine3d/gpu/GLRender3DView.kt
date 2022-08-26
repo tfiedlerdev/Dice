@@ -4,8 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.opengl.GLSurfaceView
 import android.view.MotionEvent
+import tfdev.engine3d.gpu.gl_object3d.GLScene
 
-class GLRender3DView(context: Context): GLSurfaceView(context) {
+class GLRender3DView(context: Context, scene: GLScene): GLSurfaceView(context) {
     private val renderer: GLRenderer
     var enableYRotation = true
     init {
@@ -13,12 +14,12 @@ class GLRender3DView(context: Context): GLSurfaceView(context) {
         // Create an OpenGL ES 2.0 context
         setEGLContextClientVersion(3)
 
-        renderer = GLRenderer(getContext())
+        renderer = GLRenderer(getContext(),scene)
 
         // Set the Renderer for drawing on the GLSurfaceView
         setRenderer(renderer)
 
-        renderMode = RENDERMODE_WHEN_DIRTY
+        renderMode = RENDERMODE_CONTINUOUSLY
     }
     private var lastEventX = 0f
 

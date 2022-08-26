@@ -11,7 +11,7 @@ uniform vec3 uLightDirection;
 uniform vec3 uLightPosition;
 float uLightPower = 3.;
 void main() {
-    vec4 MaterialDiffuseColor = vec4(normalWorldSpace*0.5+0.5,1.);
+    vec4 MaterialDiffuseColor =uColor;//vec4(normalize(normalWorldSpace)*0.5+0.5,1.);
 
     float cosTheta = clamp(dot( normalWorldSpace, uLightDirection ), 0.,1. );
 

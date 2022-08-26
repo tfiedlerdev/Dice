@@ -3,14 +3,16 @@ package tfdev.engine3d.gpu.gl_object3d
 import android.opengl.GLES20.*
 import sensors_in_paradise.sonar.custom_views.stickman.math.Matrix4x4
 import tfdev.engine3d.Transform
+import tfdev.engine3d.gpu.DynamicTransform
 import tfdev.engine3d.gpu.LightSource
+import tfdev.engine3d.gpu.physics.BoundingBox
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 
-abstract class GLObject3D : Transform() {
-    private val children: ArrayList<GLObject3D> = ArrayList()
+abstract class GLObject3D : DynamicTransform() {
+    protected val children: ArrayList<GLObject3D> = ArrayList()
     var parent: GLObject3D? = null
 
     abstract val openGLProgram: Int?
@@ -21,7 +23,7 @@ abstract class GLObject3D : Transform() {
     open val uvBuffer: FloatBuffer? = null
     open val normalBuffer: FloatBuffer? = null
     open val lightSource: LightSource? = null
-
+    open val boundingBox: BoundingBox? = null
     private fun getObjectLightSource(): LightSource? {
         if (lightSource != null) {
             return lightSource
@@ -56,13 +58,21 @@ abstract class GLObject3D : Transform() {
 
     private val vertexStride: Int = COORDS_PER_VERTEX * 4 // 4 bytes per vertex
 
-    private val color = floatArrayOf(1f, 1f, 1f, 1f)
+    val color = floatArrayOf(1f, 1f, 1f, 1f)
 
     fun draw(projection: Matrix4x4) {
         drawSelf(projection)
 
         for (child in children) {
             child.draw(projection)
+        }
+    }
+
+    override fun step(deltaTime: Long){
+        super.step(deltaTime)
+
+        for(child in children){
+            child.step(deltaTime)
         }
     }
 

@@ -128,6 +128,10 @@ class Matrix4x4(private val data: FloatArray) {
         Matrix.translateM(this.data, 0, x, y, z)
     }
 
+    fun inverse(target: Matrix4x4){
+        Matrix.invertM(target.data, 0, this.data, 0)
+    }
+
     override fun hashCode(): Int {
         return data.contentHashCode()
     }

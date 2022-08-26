@@ -9,6 +9,7 @@ open class Transform(
     val scale: Vec3 = Vec3(1f, 1f, 1f)
 ) {
     val modelMatrix = Matrix4x4()
+    val inverseModelMatrix = Matrix4x4()
     protected var isDirty = true
 
     private fun getLocalModelMatrix(): Matrix4x4 {
@@ -21,11 +22,13 @@ open class Transform(
 
     fun computeModelMatrix() {
         modelMatrix.copyFrom(getLocalModelMatrix())
+        modelMatrix.inverse(inverseModelMatrix)
         isDirty = false
     }
 
     fun computeModelMatrix(parentGlobalModelMatrix: Matrix4x4) {
         modelMatrix.copyFrom(parentGlobalModelMatrix * getLocalModelMatrix())
+        modelMatrix.inverse(inverseModelMatrix)
         isDirty = false
     }
 

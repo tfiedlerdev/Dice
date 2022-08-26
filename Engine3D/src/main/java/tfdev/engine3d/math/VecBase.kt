@@ -93,4 +93,10 @@ open class VecBase(protected val values: FloatArray, size: Int) {
         result = 31 * result + size
         return result
     }
+
+    fun zeros(){
+        for(i in 0 until size){
+            values[i] = 0f
+        }
+    }
 }
