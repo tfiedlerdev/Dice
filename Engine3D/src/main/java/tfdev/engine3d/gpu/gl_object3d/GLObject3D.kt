@@ -2,6 +2,7 @@ package tfdev.engine3d.gpu.gl_object3d
 
 import android.opengl.GLES20.*
 import sensors_in_paradise.sonar.custom_views.stickman.math.Matrix4x4
+import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.Transform
 import tfdev.engine3d.gpu.DynamicTransform
 import tfdev.engine3d.gpu.LightSource
@@ -11,7 +12,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 
-abstract class GLObject3D : DynamicTransform() {
+abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() {
     protected val children: ArrayList<GLObject3D> = ArrayList()
     var parent: GLObject3D? = null
 
@@ -24,6 +25,7 @@ abstract class GLObject3D : DynamicTransform() {
     open val normalBuffer: FloatBuffer? = null
     open val lightSource: LightSource? = null
     open val boundingBox: BoundingBox? = null
+    val color: FloatArray = floatArrayOf(color.x, color.y, color.z, color.w)
     private fun getObjectLightSource(): LightSource? {
         if (lightSource != null) {
             return lightSource
@@ -37,7 +39,7 @@ abstract class GLObject3D : DynamicTransform() {
     }
 
     fun updateSelfAndChild() {
-        if (!isDirty) {
+        if (!isDirty()) {
             return
         }
         forceUpdateSelfAndChild()
@@ -58,7 +60,7 @@ abstract class GLObject3D : DynamicTransform() {
 
     private val vertexStride: Int = COORDS_PER_VERTEX * 4 // 4 bytes per vertex
 
-    val color = floatArrayOf(1f, 1f, 1f, 1f)
+
 
     fun draw(projection: Matrix4x4) {
         drawSelf(projection)

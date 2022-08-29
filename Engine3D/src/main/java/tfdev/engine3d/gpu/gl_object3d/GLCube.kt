@@ -2,12 +2,14 @@ package tfdev.engine3d.gpu.gl_object3d
 
 import android.content.Context
 import android.opengl.GLES20
+import android.util.Log
+import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.gpu.physics.BoundingBox
 import tfdev.engine3d.gpu.shader.OpenGLProgram
 import tfdev.engine3d.gpu.shader.Shader
 
-class GLCube(context: Context, addBoundingBox: Boolean = true) : GLObject3D() {
+class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec4(1f, 1f, 1f, 1f)) : GLObject3D(color) {
 
     private val cubeCoords = floatArrayOf(
         -0.5f, -0.5f, 0.5f, // 0 bottom
@@ -148,32 +150,71 @@ class GLCube(context: Context, addBoundingBox: Boolean = true) : GLObject3D() {
 
     init {
         if (boundingBox != null) {
-            val cornerCollisionIndicators = ArrayList<GLCube>()
-            for (corner in boundingBox.corners) {
-                val indicator = GLCube(context, false).apply {
-                    pos.apply {
-                        x = corner.x
-                        y = corner.y
-                        z = corner.z
+            if(DEBUG_CORNER_COLLISIONS) {
+                val cornerCollisionIndicators = ArrayList<GLCube>()
+                for (corner in boundingBox.corners) {
+                    val indicator = GLCube(context, false).apply {
+                        pos.apply {
+                            x = corner.x
+                            y = corner.y
+                            z = corner.z
+                        }
+                        scale.apply {
+                            x = 0.2f
+                            y = 0.2f
+                            z = 0.2f
+                        }
+                        mass = Float.MAX_VALUE
+                        setDirty()
                     }
-                    scale.apply {
-                        x = 0.2f
-                        y = 0.2f
-                        z = 0.2f
-                    }
-                    mass = Float.MAX_VALUE
-                    setDirty()
+                    addChild(indicator)
+                    cornerCollisionIndicators.add(indicator)
                 }
-                addChild(indicator)
-                cornerCollisionIndicators.add(indicator)
+                boundingBox.onCornerCollisionCallback = { cornerIndex ->
+                    cornerCollisionIndicators[cornerIndex].color.apply {
+                        set(0, 1f)
+                        set(1, 0f)
+                        set(2, 0f)
+                    }
+                    Log.d("GLCube-onCornerColli", "Collision event at corner $cornerIndex")
+                }
             }
-            boundingBox.onCornerCollisionCallback = { cornerIndex ->
-                cornerCollisionIndicators[cornerIndex].color.apply {
-                    set(0,1f)
-                    set(1,0f)
-                    set(2,0f)
+            if(DEBUG_EDGE_COLLISIONS){
+                val edgeCollisionIndicators = ArrayList<GLCube>()
+                for ((corner1, corner2) in boundingBox.edges) {
+                    val diff = corner2-corner1
+                    val diffIndex = diff.data().indexOfFirst { it != 0f }
+                    val indicator = GLCube(context, false,Vec4(0f,1f,0.5f)).apply {
+                        pos.apply {
+                            x = if(diffIndex==0) 0f else corner1.x
+                            y = if(diffIndex==1) 0f else corner1.y
+                            z = if(diffIndex==2) 0f else corner1.z
+                        }
+                        scale.apply {
+                            x = if(diff.x==0f) 0.1f else diff.x*0.7f
+                            y = if(diff.y==0f) 0.1f else diff.y*0.7f
+                            z = if(diff.z==0f) 0.1f else diff.z*0.7f
+                        }
+                        mass = Float.MAX_VALUE
+
+                        setDirty()
+                    }
+                    addChild(indicator)
+                    edgeCollisionIndicators.add(indicator)
+                }
+                boundingBox.onEdgeCollisionCallback = { edgeIndex ->
+                    edgeCollisionIndicators[edgeIndex].color.apply {
+                        set(0, 1f)
+                        set(1, 0f)
+                        set(2, 0f)
+                    }
+                    Log.d("GLCube-onEdgeColli", "Collision event at edge $edgeIndex")
                 }
             }
         }
+    }
+    companion object{
+        const val DEBUG_CORNER_COLLISIONS = false
+        const val DEBUG_EDGE_COLLISIONS = true
     }
 }

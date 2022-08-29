@@ -42,7 +42,7 @@ class GLRenderer(private val context: Context, val scene: GLScene) : GLSurfaceVi
         scene.apply {
             addChild(createCube(Vec3(-0.25f, 0f, 0f)))
             addChild(createCube(Vec3(.5f, 0f, 0f)).apply {
-                force.x = -0.1f
+                force.x = -0.5f
                 pos.y = 0.1f
                 pos.z=0.1f
                 setDirty()
@@ -63,10 +63,11 @@ class GLRenderer(private val context: Context, val scene: GLScene) : GLSurfaceVi
         val now = System.currentTimeMillis()
         scene.step(now-lastTime)
         lastTime = now
+        scene.updateSelfAndChild()
         scene.checkCollisions()
 
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-        scene.updateSelfAndChild()
+
         scene.draw(projectionMatrix4x4 * camera.lookAtMatrix)
     }
 

@@ -99,4 +99,8 @@ open class VecBase(protected val values: FloatArray, size: Int) {
             values[i] = 0f
         }
     }
+
+    override fun toString(): String{
+        return data().joinToString()
+    }
 }

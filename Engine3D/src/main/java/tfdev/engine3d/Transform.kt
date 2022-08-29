@@ -10,7 +10,7 @@ open class Transform(
 ) {
     val modelMatrix = Matrix4x4()
     val inverseModelMatrix = Matrix4x4()
-    protected var isDirty = true
+    protected var _isDirty = true
 
     private fun getLocalModelMatrix(): Matrix4x4 {
         val rotM = Matrix4x4.rotateEuler(eulerRotDeg.x, eulerRotDeg.y, eulerRotDeg.z)
@@ -23,16 +23,19 @@ open class Transform(
     fun computeModelMatrix() {
         modelMatrix.copyFrom(getLocalModelMatrix())
         modelMatrix.inverse(inverseModelMatrix)
-        isDirty = false
+        _isDirty = false
     }
 
     fun computeModelMatrix(parentGlobalModelMatrix: Matrix4x4) {
         modelMatrix.copyFrom(parentGlobalModelMatrix * getLocalModelMatrix())
         modelMatrix.inverse(inverseModelMatrix)
-        isDirty = false
+        _isDirty = false
     }
 
     fun setDirty() {
-        isDirty = true
+        _isDirty = true
+    }
+    fun isDirty(): Boolean {
+        return _isDirty
     }
 }

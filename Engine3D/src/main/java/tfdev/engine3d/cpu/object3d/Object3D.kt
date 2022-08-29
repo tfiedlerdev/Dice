@@ -31,7 +31,7 @@ abstract class Object3D(
     }
 
     fun updateSelfAndChild(){
-        if(!isDirty){
+        if(!_isDirty){
             return
         }
         forceUpdateSelfAndChild()
