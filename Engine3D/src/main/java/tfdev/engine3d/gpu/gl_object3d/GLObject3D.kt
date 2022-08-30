@@ -70,11 +70,11 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
         }
     }
 
-    override fun step(deltaTime: Long){
-        super.step(deltaTime)
+    override fun step2(deltaTime: Long){
+        super.step2(deltaTime)
 
         for(child in children){
-            child.step(deltaTime)
+            child.step2(deltaTime)
         }
     }
 

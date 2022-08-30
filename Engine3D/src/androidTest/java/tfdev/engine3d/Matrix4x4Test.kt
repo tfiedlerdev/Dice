@@ -321,7 +321,7 @@ class Matrix4x4Test {
             floatArrayOf(2f, 3f, 4f, 1f),
             floatArrayOf(1f, 1f, 1f, 1f)
         )
-        val m2 = Matrix4x4().apply { copyFrom(m1) }
+        val m2 = Matrix4x4().apply { assign(m1) }
         // row 0
         assertEquals(1f, m2[0, 0])
         assertEquals(2f, m2[0, 1])
@@ -342,6 +342,32 @@ class Matrix4x4Test {
         assertEquals(1f, m2[3, 1])
         assertEquals(1f, m2[3, 2])
         assertEquals(1f, m2[3, 3])
+    }
+
+    @Test
+    fun starTest(){
+        val m = Matrix4x4.star(Vec4(3f,1f, 2f))
+
+        // row 0
+        assertEquals(0f, m[0, 0])
+        assertEquals(-2f, m[0, 1])
+        assertEquals(1f, m[0, 2])
+        assertEquals(0f, m[0, 3])
+        // row 1
+        assertEquals(2f, m[1, 0])
+        assertEquals(0f, m[1, 1])
+        assertEquals(-3f, m[1, 2])
+        assertEquals(0f, m[1, 3])
+        // row 2
+        assertEquals(-1f, m[2, 0])
+        assertEquals(3f, m[2, 1])
+        assertEquals(0f, m[2, 2])
+        assertEquals(0f, m[2, 3])
+        // row 3
+        assertEquals(0f, m[3, 0])
+        assertEquals(0f, m[3, 1])
+        assertEquals(0f, m[3, 2])
+        assertEquals(1f, m[3, 3])
     }
 
     @After

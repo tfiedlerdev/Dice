@@ -4,7 +4,7 @@ import android.opengl.Matrix
 
 class Matrix4x4(private val data: FloatArray) {
     constructor() : this(
-       FloatArray(16).apply { Matrix.setIdentityM(this, 0) }
+        FloatArray(16).apply { Matrix.setIdentityM(this, 0) }
     )
 
     constructor(
@@ -64,6 +64,14 @@ class Matrix4x4(private val data: FloatArray) {
         }
     }
 
+    operator fun times(v: Float): Matrix4x4 {
+        val result = Matrix4x4()
+        for((index, value) in this.data.withIndex()){
+            result.data[index] = value * v
+        }
+        return result
+    }
+
     operator fun times(p: Vec4): Vec4 {
         val res = Vec4()
         for (row in 0..3) {
@@ -88,11 +96,12 @@ class Matrix4x4(private val data: FloatArray) {
             data.clone()
         )
     }
-    fun copyFrom(m: Matrix4x4) {
+
+    fun assign(m: Matrix4x4) {
         m.data.copyInto(data)
     }
 
-    fun data(): FloatArray{
+    fun data(): FloatArray {
         return data
     }
 
@@ -124,12 +133,36 @@ class Matrix4x4(private val data: FloatArray) {
         Matrix.scaleM(this.data, 0, x, y, z)
     }
 
-	fun translate(x: Float, y: Float, z: Float) {
+    fun translate(x: Float, y: Float, z: Float) {
         Matrix.translateM(this.data, 0, x, y, z)
     }
 
-    fun inverse(target: Matrix4x4){
+    fun inverse() {
+        Matrix.invertM(this.data, 0, this.data, 0)
+    }
+
+    fun inverseClone(): Matrix4x4 {
+        val m = Matrix4x4()
+        this.inverse(m)
+        return m
+    }
+
+    fun inverse(target: Matrix4x4) {
         Matrix.invertM(target.data, 0, this.data, 0)
+    }
+
+    fun transpose() {
+        Matrix.transposeM(this.data, 0, this.data, 0)
+    }
+
+    fun transpose(target: Matrix4x4) {
+        Matrix.transposeM(target.data, 0, this.data, 0)
+    }
+
+    fun transposeClone(): Matrix4x4 {
+        val m = Matrix4x4()
+        Matrix.transposeM(m.data, 0, this.data, 0)
+        return m
     }
 
     override fun hashCode(): Int {
@@ -175,19 +208,23 @@ class Matrix4x4(private val data: FloatArray) {
             )
             return m ?: Matrix4x4(data)
         }
+
         fun project(m: Matrix4x4, fovy: Float, aspect: Float, zNear: Float, zFar: Float) {
             Matrix.perspectiveM(m.data, 0, fovy, aspect, zNear, zFar)
         }
+
         fun project(fovy: Float, aspect: Float, zNear: Float, zFar: Float): Matrix4x4 {
             val data = FloatArray(16)
             Matrix.perspectiveM(data, 0, fovy, aspect, zNear, zFar)
             return Matrix4x4(data)
         }
+
         fun rotate(degrees: Float, x: Float, y: Float, z: Float): Matrix4x4 {
             val data = FloatArray(16)
             Matrix.setRotateM(data, 0, degrees, x, y, z)
             return Matrix4x4(data)
         }
+
         fun rotateEuler(xDegrees: Float, yDegrees: Float, zDegrees: Float): Matrix4x4 {
             // switch z and x so that we get the correct operation for our coordinate system
             return rotate(xDegrees, 0f, 0f, 1f) * rotate(yDegrees, 0f, 1f, 0f) * rotate(
@@ -196,6 +233,36 @@ class Matrix4x4(private val data: FloatArray) {
                 0f,
                 0f
             ) // Matrix4x4(data)
+        }
+
+        /**Taken from http://www.cs.cmu.edu/~baraff/sigcourse/notesd1.pdf */
+        fun star(v: Vec4): Matrix4x4 {
+            return Matrix4x4(
+                floatArrayOf(
+                    0f,
+                    v[2],
+                    -v[1],
+                    0f
+                ),
+                floatArrayOf(
+                    -v[2],
+                    0f,
+                    v[0],
+                    0f
+                ),
+                floatArrayOf(
+                    v[1],
+                    -v[0],
+                    0f,
+                    0f
+                ),
+                floatArrayOf(
+                    0f,
+                    0f,
+                    0f,
+                    1f
+                ),
+            )
         }
     }
 }

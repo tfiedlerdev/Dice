@@ -1,16 +1,31 @@
 package tfdev.engine3d.gpu
 
-import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
+import sensors_in_paradise.sonar.custom_views.stickman.math.Matrix4x4
+import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.Transform
 
 open class DynamicTransform(
-    val constantForce: Vec3 = Vec3(0f, 0f, 0f),
-    val force: Vec3 = Vec3(0f, 0f, 0f),
-    val velocity: Vec3 = Vec3(0f, 0f, 0f),
+    val constantForce: Vec4 = Vec4(0f, 0f, 0f),
+    val force: Vec4 = Vec4(0f, 0f, 0f),
+    val velocity: Vec4 = Vec4(0f, 0f, 0f),
     var mass: Float = 1f
 ) : Transform() {
+    val Iinv = Matrix4x4()
+    val omega = Vec4()
+    val torque = Vec4()
+    val P = Vec4()
+    val L = Vec4()
+    val Ibody = Matrix4x4(
+        floatArrayOf(
+            2f, 0f, 0f, 0f
+        ),
+        floatArrayOf(0f, 2f, 0f, 0f),
+        floatArrayOf(0f, 0f, 2f, 0f),
+        floatArrayOf(0f, 0f, 0f, 1f)
+    )*(mass/12f)
+    val IbodyInverse = Ibody.inverseClone()
 
-    open fun step(deltaTime: Long) {
+    open fun stepOld(deltaTime: Long) {
         val dt = deltaTime.toFloat() / 1000f
 
         force += constantForce * mass
@@ -20,6 +35,31 @@ open class DynamicTransform(
         pos += velocity * dt
         force.zeros()
         setDirty()
+
+    }
+
+    open fun step2(deltaTime: Long) {
+        val dt = deltaTime.toFloat() / 1000f
+
+
+        //P.assign(force)
+        //L.assign(torque)
+
+        velocity.assign(P / mass)
+        Iinv.assign(R * IbodyInverse * R.transposeClone())
+        omega.assign(Iinv * L)
+
+        pos += (velocity.xyz * dt)
+        //R.assign(Matrix4x4.star(omega) * R)
+        P += force *dt
+        L += torque *dt
+
+        force.zeros()
+        torque.zeros()
+    }
+
+    companion object {
+
 
     }
 }

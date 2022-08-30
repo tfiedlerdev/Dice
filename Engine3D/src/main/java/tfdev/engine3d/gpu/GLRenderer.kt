@@ -45,6 +45,7 @@ class GLRenderer(private val context: Context, val scene: GLScene) : GLSurfaceVi
                 force.x = -0.5f
                 pos.y = 0.1f
                 pos.z=0.1f
+                //torque.y=0.4f
                 setDirty()
             })
             //addChild(createCube(Vec3(-.5f, 0f, .5f)))
@@ -61,7 +62,7 @@ class GLRenderer(private val context: Context, val scene: GLScene) : GLSurfaceVi
     override fun onDrawFrame(unused: GL10) {
         // Redraw background color
         val now = System.currentTimeMillis()
-        scene.step(now-lastTime)
+        scene.step2(now-lastTime)
         lastTime = now
         scene.updateSelfAndChild()
         scene.checkCollisions()
