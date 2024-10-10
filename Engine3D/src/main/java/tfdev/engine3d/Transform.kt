@@ -37,7 +37,7 @@ open class Transform(
         _isDirty = false
     }
 
-    fun setDirty() {
+    open fun setDirty() {
         _isDirty = true
     }
     fun isDirty(): Boolean {

@@ -38,28 +38,28 @@ open class DynamicTransform(
 
     }
 
-    open fun step2(deltaTime: Long) {
+    protected fun stepPhysics(deltaTime: Long): Boolean {
         val dt = deltaTime.toFloat() / 1000f
 
 
         //P.assign(force)
         //L.assign(torque)
-
+        // TODO: also check for rotational changes
         velocity.assign(P / mass)
         Iinv.assign(R * IbodyInverse * R.transposeClone())
         omega.assign(Iinv * L)
+        val deltaPos = (velocity.xyz * dt)
 
-        pos += (velocity.xyz * dt)
+
+        pos += deltaPos
         //R.assign(Matrix4x4.star(omega) * R)
         P += force *dt
         L += torque *dt
 
         force.zeros()
         torque.zeros()
+
+        return !deltaPos.isZero()
     }
 
-    companion object {
-
-
-    }
 }

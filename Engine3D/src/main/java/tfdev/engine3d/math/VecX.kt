@@ -59,6 +59,15 @@ abstract class VecX<T : VecBase>(values: FloatArray, size: Int = values.size) : 
         return res
     }
 
+    fun isZero():Boolean{
+        for(value in values){
+            if(value == 0.0f){
+                return false
+            }
+        }
+        return true
+    }
+
 	fun assign(a: VecBase) {
         for (i in 0 until a.size.coerceAtMost(size)) {
              this[i] = a[i]

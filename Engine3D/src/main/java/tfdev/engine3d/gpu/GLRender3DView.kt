@@ -3,20 +3,35 @@ package tfdev.engine3d.gpu
 import android.annotation.SuppressLint
 import android.content.Context
 import android.opengl.GLSurfaceView
+import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import tfdev.engine3d.gpu.gl_object3d.GLScene
 
-class GLRender3DView(context: Context, scene: GLScene): GLSurfaceView(context) {
+class GLRender3DView : GLSurfaceView {
+    val scene: GLScene
     private val renderer: GLRenderer
     var enableYRotation = true
-    init {
 
-        // Create an OpenGL ES 2.0 context
+    // Constructor for XML inflation
+    constructor(context: Context, attributeSet: AttributeSet) : super(context, attributeSet) {
+        scene = GLScene()
+
         setEGLContextClientVersion(3)
 
-        renderer = GLRenderer(getContext(),scene)
+        renderer = GLRenderer(context, scene)
+        setRenderer(renderer)
 
-        // Set the Renderer for drawing on the GLSurfaceView
+        renderMode = RENDERMODE_CONTINUOUSLY
+    }
+
+    // Constructor for programmatically creating the view
+    constructor(context: Context, scene: GLScene) : super(context) {
+        this.scene = scene
+
+        setEGLContextClientVersion(3)
+
+        renderer = GLRenderer(context, scene)
         setRenderer(renderer)
 
         renderMode = RENDERMODE_CONTINUOUSLY
@@ -32,14 +47,20 @@ class GLRender3DView(context: Context, scene: GLScene): GLSurfaceView(context) {
                     val diff = lastEventX - x
                     lastEventX = x
                     renderer.camera.rotateY(diff / 5f)
+
                     requestRender()
                 }
                 if (event.action == MotionEvent.ACTION_DOWN) {
                     lastEventX = event.getAxisValue(MotionEvent.AXIS_X)
                 }
+
             }
         }
         return enableYRotation
+    }
+
+    fun setOnSceneInitializedListener(listener:((scene: GLScene) -> Unit)) {
+        renderer.onSceneInitialized = listener
     }
 
     companion object{

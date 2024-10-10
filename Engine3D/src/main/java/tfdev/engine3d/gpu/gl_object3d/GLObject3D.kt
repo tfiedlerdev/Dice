@@ -3,7 +3,6 @@ package tfdev.engine3d.gpu.gl_object3d
 import android.opengl.GLES20.*
 import sensors_in_paradise.sonar.custom_views.stickman.math.Matrix4x4
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
-import tfdev.engine3d.Transform
 import tfdev.engine3d.gpu.DynamicTransform
 import tfdev.engine3d.gpu.LightSource
 import tfdev.engine3d.gpu.physics.BoundingBox
@@ -13,7 +12,7 @@ import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 
 abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() {
-    protected val children: ArrayList<GLObject3D> = ArrayList()
+    val children: ArrayList<GLObject3D> = ArrayList()
     var parent: GLObject3D? = null
 
     abstract val openGLProgram: Int?
@@ -70,11 +69,15 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
         }
     }
 
-    override fun step2(deltaTime: Long){
-        super.step2(deltaTime)
+    fun step(deltaTime: Long){
+        if(super.stepPhysics(deltaTime)){
+            setDirty()
+        }
 
         for(child in children){
-            child.step2(deltaTime)
+            if(child.stepPhysics(deltaTime)){
+                child.setDirty()
+            }
         }
     }
 
@@ -173,6 +176,7 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
         }
     }
 
+
     companion object {
         const val COORDS_PER_VERTEX = 3
         fun shortBufferFromArray(a: ShortArray): ShortBuffer {
@@ -204,5 +208,10 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
                 }
             }
         }
+    }
+    override fun setDirty() {
+        super.setDirty()
+
+        parent?.setDirty()
     }
 }
