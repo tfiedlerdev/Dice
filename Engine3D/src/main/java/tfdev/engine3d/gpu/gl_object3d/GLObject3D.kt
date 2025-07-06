@@ -11,7 +11,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 
-abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() {
+abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f), gravity: Vec4= Vec4()) : DynamicTransform(gravity=gravity) {
     val children: ArrayList<GLObject3D> = ArrayList()
     var parent: GLObject3D? = null
 
@@ -75,9 +75,7 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
         }
 
         for(child in children){
-            if(child.stepPhysics(deltaTime)){
-                child.setDirty()
-            }
+            child.step(deltaTime)
         }
     }
 
