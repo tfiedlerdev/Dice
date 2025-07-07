@@ -235,6 +235,36 @@ class Matrix4x4(private val data: FloatArray) {
             ) // Matrix4x4(data)
         }
 
+        /**
+         * Create a rotation matrix from axis-angle representation
+         * @param angle Angle in radians
+         * @param axis Unit vector representing the rotation axis
+         */
+        fun rotateAxisAngle(angle: Float, axis: Vec3): Matrix4x4 {
+            val c = kotlin.math.cos(angle)
+            val s = kotlin.math.sin(angle)
+            val t = 1f - c
+            
+            val x = axis.x
+            val y = axis.y
+            val z = axis.z
+            
+            return Matrix4x4(
+                floatArrayOf(
+                    t * x * x + c, t * x * y - s * z, t * x * z + s * y, 0f
+                ),
+                floatArrayOf(
+                    t * x * y + s * z, t * y * y + c, t * y * z - s * x, 0f
+                ),
+                floatArrayOf(
+                    t * x * z - s * y, t * y * z + s * x, t * z * z + c, 0f
+                ),
+                floatArrayOf(
+                    0f, 0f, 0f, 1f
+                )
+            )
+        }
+
         /**Taken from http://www.cs.cmu.edu/~baraff/sigcourse/notesd1.pdf */
         fun star(v: Vec4): Matrix4x4 {
             return Matrix4x4(

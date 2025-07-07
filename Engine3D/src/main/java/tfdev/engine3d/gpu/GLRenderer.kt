@@ -42,10 +42,18 @@ class GLRenderer(
     override fun onDrawFrame(unused: GL10) {
         // Redraw background color
         val now = System.currentTimeMillis()
-        scene.step(now - lastTime)
+        val deltaTime = now - lastTime
         lastTime = now
-        scene.updateSelfAndChild()
-        scene.checkCollisions()
+        
+        // Multiple collision checks per frame for better accuracy
+        val numSubSteps = 3
+        val subStepTime = deltaTime / numSubSteps
+        
+        for (i in 0 until numSubSteps) {
+            scene.step(subStepTime)
+            scene.updateSelfAndChild()
+            scene.checkCollisions()
+        }
 
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 

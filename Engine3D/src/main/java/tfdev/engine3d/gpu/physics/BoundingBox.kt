@@ -55,12 +55,11 @@ class BoundingBox(
     }
 
 
-    fun getCollidingEdgePointsWorld(bb2: BoundingBox): List<Vec3> {
-        val collisionPoints= ArrayList<Vec3>(8)
+    fun getCollidingEdgePointsWorld(bb2: BoundingBox): List<Vec4> {
+        val collisionPoints= ArrayList<Vec4>(8)
         for ((index, edge) in bb2.edges.withIndex()) {
             val (p1, p2) = edge
             // transform point so that it is positioned relative to this bbox which is axis aligned and in origin
-
 
             val p1World = transform.inverseModelMatrix * bb2.transform.modelMatrix*p1
             val p2World = transform.inverseModelMatrix * bb2.transform.modelMatrix*p2
@@ -70,7 +69,8 @@ class BoundingBox(
                 bb2.onEdgeCollisionCallback?.let {
                     it(index)
                 }
-                collisionPoints.add(intersection)
+                // Convert Vec3 intersection to Vec4 with w=1
+                collisionPoints.add(Vec4(intersection.x, intersection.y, intersection.z, 1f))
             }
         }
         return collisionPoints
@@ -142,7 +142,7 @@ class BoundingBox(
         return null
     }
 
-    private fun isPointInThisBox(p: Vec4): Boolean {
+    fun isPointInThisBox(p: Vec4): Boolean {
         if (abs(p.x) > 0.5) {
             return false
         }

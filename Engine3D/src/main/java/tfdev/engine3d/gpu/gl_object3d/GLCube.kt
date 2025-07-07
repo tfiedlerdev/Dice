@@ -2,14 +2,13 @@ package tfdev.engine3d.gpu.gl_object3d
 
 import android.content.Context
 import android.opengl.GLES20
-import android.util.Log
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.gpu.physics.BoundingBox
 import tfdev.engine3d.gpu.shader.OpenGLProgram
 import tfdev.engine3d.gpu.shader.Shader
 
-class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec4(1f, 1f, 1f, 1f)) : GLObject3D(color) {
+class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec4(1f, 1f, 1f, 1f), gravity: Vec4=Vec4(0f,-4f, 0f)) : GLObject3D(color,gravity ) {
 
     private val cubeCoords = floatArrayOf(
         -0.5f, -0.5f, 0.5f, // 0 bottom
@@ -153,7 +152,8 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
             if(DEBUG_CORNER_COLLISIONS) {
                 val cornerCollisionIndicators = ArrayList<GLCube>()
                 for (corner in boundingBox.corners) {
-                    val indicator = GLCube(context, false).apply {
+                    val indicator = GLCube(context, false, gravity=Vec4()).apply {
+                        isStatic=true
                         pos.apply {
                             x = corner.x
                             y = corner.y
@@ -176,7 +176,7 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
                         set(1, 0f)
                         set(2, 0f)
                     }
-                    Log.d("GLCube-onCornerColli", "Collision event at corner $cornerIndex")
+                    println("GLCube-onCornerColli: Collision event at corner $cornerIndex")
                 }
             }
             if(DEBUG_EDGE_COLLISIONS){
@@ -184,7 +184,8 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
                 for ((corner1, corner2) in boundingBox.edges) {
                     val diff = corner2-corner1
                     val diffIndex = diff.data().indexOfFirst { it != 0f }
-                    val indicator = GLCube(context, false,Vec4(0f,1f,0.5f)).apply {
+                    val indicator = GLCube(context, false,Vec4(0f,1f,0.5f), gravity=Vec4()).apply {
+                        isStatic=true
                         pos.apply {
                             x = if(diffIndex==0) 0f else corner1.x
                             y = if(diffIndex==1) 0f else corner1.y
@@ -208,13 +209,13 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
                         set(1, 0f)
                         set(2, 0f)
                     }
-                    Log.d("GLCube-onEdgeColli", "Collision event at edge $edgeIndex")
+                    println("GLCube-onEdgeColli: Collision event at edge $edgeIndex")
                 }
             }
         }
     }
     companion object{
         const val DEBUG_CORNER_COLLISIONS = false
-        const val DEBUG_EDGE_COLLISIONS = true
+        const val DEBUG_EDGE_COLLISIONS = false
     }
 }
