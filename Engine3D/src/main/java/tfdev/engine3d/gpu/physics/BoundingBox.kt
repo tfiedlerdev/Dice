@@ -3,7 +3,11 @@ package tfdev.engine3d.gpu.physics
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.Transform
+import tfdev.engine3d.physics.CollisionInfo
+import tfdev.engine3d.gpu.GLObject3D
 import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.max
 
 
 class BoundingBox(
@@ -153,5 +157,76 @@ class BoundingBox(
             return false
         }
         return true
+    }
+    
+    fun checkCollisionDetailed(other: BoundingBox, objA: GLObject3D, objB: GLObject3D): CollisionInfo? {
+        // Get world space AABBs
+        val minA = getMinWorld()
+        val maxA = getMaxWorld()
+        val minB = other.getMinWorld()
+        val maxB = other.getMaxWorld()
+        
+        // Check AABB overlap
+        if (minA.x > maxB.x || maxA.x < minB.x) return null
+        if (minA.y > maxB.y || maxA.y < minB.y) return null
+        if (minA.z > maxB.z || maxA.z < minB.z) return null
+        
+        // Calculate overlap on each axis
+        val overlapX = min(maxA.x, maxB.x) - max(minA.x, minB.x)
+        val overlapY = min(maxA.y, maxB.y) - max(minA.y, minB.y)
+        val overlapZ = min(maxA.z, maxB.z) - max(minA.z, minB.z)
+        
+        // Find axis of minimum overlap (separation axis)
+        var normal = Vec4(0f, 0f, 0f)
+        var penetration = Float.MAX_VALUE
+        
+        if (overlapX < overlapY && overlapX < overlapZ) {
+            penetration = overlapX
+            normal = if (transform.pos.x < other.transform.pos.x) Vec4(1f, 0f, 0f) else Vec4(-1f, 0f, 0f)
+        } else if (overlapY < overlapZ) {
+            penetration = overlapY
+            normal = if (transform.pos.y < other.transform.pos.y) Vec4(0f, 1f, 0f) else Vec4(0f, -1f, 0f)
+        } else {
+            penetration = overlapZ
+            normal = if (transform.pos.z < other.transform.pos.z) Vec4(0f, 0f, 1f) else Vec4(0f, 0f, -1f)
+        }
+        
+        // Calculate contact point (center of overlap region)
+        val contactPoint = Vec4(
+            (max(minA.x, minB.x) + min(maxA.x, maxB.x)) * 0.5f,
+            (max(minA.y, minB.y) + min(maxA.y, maxB.y)) * 0.5f,
+            (max(minA.z, minB.z) + min(maxA.z, maxB.z)) * 0.5f
+        )
+        
+        return CollisionInfo(
+            objectA = objA,
+            objectB = objB,
+            contactPoint = contactPoint,
+            normal = normal,
+            penetrationDepth = penetration,
+            isFaceCollision = true
+        )
+    }
+    
+    private fun getMinWorld(): Vec4 {
+        val worldCorners = corners.map { corner ->
+            transform.modelMatrix * corner
+        }
+        return Vec4(
+            worldCorners.minOf { it.x },
+            worldCorners.minOf { it.y },
+            worldCorners.minOf { it.z }
+        )
+    }
+    
+    private fun getMaxWorld(): Vec4 {
+        val worldCorners = corners.map { corner ->
+            transform.modelMatrix * corner
+        }
+        return Vec4(
+            worldCorners.maxOf { it.x },
+            worldCorners.maxOf { it.y },
+            worldCorners.maxOf { it.z }
+        )
     }
 }
