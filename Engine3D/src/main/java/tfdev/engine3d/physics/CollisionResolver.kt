@@ -3,7 +3,6 @@ package tfdev.engine3d.physics
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import sensors_in_paradise.sonar.custom_views.stickman.math.cross
 import tfdev.engine3d.gpu.DynamicTransform
-import tfdev.engine3d.gpu.GLObject3D
 import kotlin.math.max
 import kotlin.math.min
 

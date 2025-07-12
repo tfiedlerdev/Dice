@@ -3,8 +3,8 @@ package tfdev.engine3d.gpu.physics
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.Transform
+import tfdev.engine3d.gpu.gl_object3d.GLObject3D
 import tfdev.engine3d.physics.CollisionInfo
-import tfdev.engine3d.gpu.GLObject3D
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.max
