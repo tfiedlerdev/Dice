@@ -37,6 +37,12 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
         children.add(obj)
     }
 
+    fun removeChild(obj: GLObject3D) {
+        if (children.remove(obj)) {
+            obj.parent = null
+        }
+    }
+
     fun updateSelfAndChild() {
         if (!isDirty()) {
             return

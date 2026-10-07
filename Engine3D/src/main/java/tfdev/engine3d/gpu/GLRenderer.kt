@@ -23,8 +23,12 @@ class GLRenderer(
             field = value
         }
 
+    // Looking straight down at the playing field from above. `up` can't be the
+    // vertical (0,1,0) here - it has to be some direction orthogonal to the (also
+    // vertical) view direction, which is what ends up pointing "towards the top of
+    // the screen"; -Z was picked arbitrarily.
     val camera =
-        Camera(center = Vec3(0f, 0.5f, 0f), eye = Vec3(0f, 1.25f, -2f), up = Vec3(0f, 1f, 0f))
+        Camera(center = Vec3(0f, 0f, 0f), eye = Vec3(0f, 8f, 0f), up = Vec3(0f, 0f, -1f))
     private val projectionMatrix4x4: Matrix4x4 = Matrix4x4()
 
 
@@ -49,6 +53,7 @@ class GLRenderer(
 
         val subStepTime = deltaTime / PHYSICS_SUBSTEPS
         repeat(PHYSICS_SUBSTEPS) {
+            scene.applyExternalAcceleration()
             scene.step(subStepTime)
             scene.updateSelfAndChild()
             scene.checkCollisions()
@@ -64,7 +69,7 @@ class GLRenderer(
         glViewport(0, 0, width, height)
         val ratio: Float = width.toFloat() / height.toFloat()
 
-        Matrix4x4.project(projectionMatrix4x4, 90f, ratio, 0.1f, 5f)
+        Matrix4x4.project(projectionMatrix4x4, 90f, ratio, 0.1f, 20f)
     }
 
     companion object {

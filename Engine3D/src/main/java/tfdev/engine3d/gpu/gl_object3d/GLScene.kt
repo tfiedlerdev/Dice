@@ -27,6 +27,24 @@ class GLScene : GLObject3D() {
     }
 
     /**
+     * An extra, scene-wide acceleration (in addition to each object's own
+     * [DynamicTransform.gravity][tfdev.engine3d.gpu.DynamicTransform]) applied to
+     * every non-static top-level object every substep - e.g. to let a device's
+     * accelerometer "tilt" the whole playing field.
+     */
+    val externalAcceleration = Vec3()
+
+    /** Adds [externalAcceleration] as a force to every non-static (top-level) object. */
+    fun applyExternalAcceleration() {
+        if (externalAcceleration.isZero()) return
+        for (child in children) {
+            if (!child.isStatic) {
+                child.force += externalAcceleration * child.mass
+            }
+        }
+    }
+
+    /**
      * Detects and resolves collisions between every pair of (top-level)
      * objects in the scene. Must be called after [updateSelfAndChild] so
      * that each object's `modelMatrix` reflects this frame's [step].

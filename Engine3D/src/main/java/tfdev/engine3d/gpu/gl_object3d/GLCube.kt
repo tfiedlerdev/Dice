@@ -218,6 +218,6 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
     }
     companion object{
         const val DEBUG_CORNER_COLLISIONS = false
-        const val DEBUG_EDGE_COLLISIONS = true
+        const val DEBUG_EDGE_COLLISIONS = false
     }
 }
