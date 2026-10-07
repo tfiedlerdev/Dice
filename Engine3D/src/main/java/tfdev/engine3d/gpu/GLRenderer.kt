@@ -42,10 +42,17 @@ class GLRenderer(
     override fun onDrawFrame(unused: GL10) {
         // Redraw background color
         val now = System.currentTimeMillis()
-        scene.step(now - lastTime)
+        // Clamp so a hitch (e.g. the app being paused and resumed) can't produce one huge,
+        // tunneling-prone physics step; instead run several smaller, more accurate substeps.
+        val deltaTime = (now - lastTime).coerceIn(0L, MAX_FRAME_TIME_MILLIS)
         lastTime = now
-        scene.updateSelfAndChild()
-        scene.checkCollisions()
+
+        val subStepTime = deltaTime / PHYSICS_SUBSTEPS
+        repeat(PHYSICS_SUBSTEPS) {
+            scene.step(subStepTime)
+            scene.updateSelfAndChild()
+            scene.checkCollisions()
+        }
 
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
@@ -60,4 +67,8 @@ class GLRenderer(
         Matrix4x4.project(projectionMatrix4x4, 90f, ratio, 0.1f, 5f)
     }
 
+    companion object {
+        private const val PHYSICS_SUBSTEPS = 4
+        private const val MAX_FRAME_TIME_MILLIS = 100L
+    }
 }
