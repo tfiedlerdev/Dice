@@ -16,7 +16,7 @@ void main() {
     float cosTheta = clamp(dot( normalWorldSpace, uLightDirection ), 0.,1. );
 
     float distance = abs(length(vec4(uLightPosition,1.) -  positionWorldSpace));
-    vec4 MaterialAmbientColor = vec4(0.2,0.2,0.2,1.) * MaterialDiffuseColor;
+    vec4 MaterialAmbientColor = vec4(0.35,0.35,0.35,1.) * MaterialDiffuseColor;
 
     vec3 normColor = normalWorldSpace/2. + 0.5;
     fragColor = MaterialAmbientColor+MaterialDiffuseColor*vec4(vec3(uLightColor*uLightPower*cosTheta/*/(distance*distance)*/), 1.);

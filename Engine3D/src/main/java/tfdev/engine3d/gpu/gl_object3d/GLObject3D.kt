@@ -69,15 +69,13 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
         }
     }
 
-    fun step(deltaTime: Long){
-        if(super.stepPhysics(deltaTime)){
+    fun step(deltaTime: Long) {
+        if (stepPhysics(deltaTime)) {
             setDirty()
         }
 
-        for(child in children){
-            if(child.stepPhysics(deltaTime)){
-                child.setDirty()
-            }
+        for (child in children) {
+            child.step(deltaTime)
         }
     }
 

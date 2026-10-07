@@ -60,8 +60,8 @@ abstract class VecX<T : VecBase>(values: FloatArray, size: Int = values.size) : 
     }
 
     fun isZero():Boolean{
-        for(value in values){
-            if(value == 0.0f){
+        for(i in 0 until size){
+            if(values[i] != 0.0f){
                 return false
             }
         }

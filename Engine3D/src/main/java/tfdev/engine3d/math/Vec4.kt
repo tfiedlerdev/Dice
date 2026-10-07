@@ -53,4 +53,18 @@ class Vec4(values: FloatArray) : VecX<Vec4>(values, 4) {
         z = result.z
         w = result.w
     }
+
+    /**
+     * Cross product of the xyz parts of the two vectors (w is ignored).
+     */
+    fun cross(other: Vec4): Vec3 {
+        return Vec3(x, y, z).cross(Vec3(other.x, other.y, other.z))
+    }
+
+    /**
+     * Dot product of the xyz parts of the two vectors (w is ignored).
+     */
+    infix fun dot(other: Vec4): Float {
+        return x * other.x + y * other.y + z * other.z
+    }
 }

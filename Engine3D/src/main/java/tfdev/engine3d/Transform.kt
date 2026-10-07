@@ -43,4 +43,13 @@ open class Transform(
     fun isDirty(): Boolean {
         return _isDirty
     }
+
+    /**
+     * This object's position in world space, i.e. including every ancestor's
+     * transform - unlike [pos], which is relative to its parent (if any).
+     * Requires [modelMatrix] to be up to date (see [computeModelMatrix]).
+     */
+    fun worldPosition(): Vec3 {
+        return Vec3(modelMatrix[0, 3], modelMatrix[1, 3], modelMatrix[2, 3])
+    }
 }

@@ -165,6 +165,56 @@ class Matrix4x4(private val data: FloatArray) {
         return m
     }
 
+    /**
+     * Length of column [col] (0..2) of the upper-left 3x3 part of this matrix.
+     * For a matrix built as translate * rotate * scale this is the world-space
+     * scale factor applied along that local axis.
+     */
+    fun getColumnLength3(col: Int): Float {
+        val x = this[0, col]
+        val y = this[1, col]
+        val z = this[2, col]
+        return kotlin.math.sqrt(x * x + y * y + z * z)
+    }
+
+    /**
+     * Unit-length direction of column [col] (0..2) of the upper-left 3x3 part
+     * of this matrix, i.e. the world-space direction of local axis [col].
+     */
+    fun getAxis3(col: Int): Vec3 {
+        val len = getColumnLength3(col)
+        if (len < 1e-8f) {
+            // Degenerate (zero scale along this axis) - fall back to a standard basis vector.
+            return when (col) {
+                0 -> Vec3(1f, 0f, 0f)
+                1 -> Vec3(0f, 1f, 0f)
+                else -> Vec3(0f, 0f, 1f)
+            }
+        }
+        return Vec3(this[0, col] / len, this[1, col] / len, this[2, col] / len)
+    }
+
+    /**
+     * Re-orthonormalizes the upper-left 3x3 rotation part of this matrix using
+     * Gram-Schmidt. Repeatedly integrating a rotation matrix step by step
+     * (as rigid body simulation does) accumulates floating point drift that
+     * slowly turns it into a non-orthogonal / non-unit-scale matrix; calling
+     * this periodically keeps it a valid rotation.
+     */
+    fun orthonormalize() {
+        var xAxis = Vec3(this[0, 0], this[1, 0], this[2, 0])
+        var yAxis = Vec3(this[0, 1], this[1, 1], this[2, 1])
+        var zAxis: Vec3
+
+        xAxis = xAxis.normalize()
+        zAxis = xAxis.cross(yAxis).normalize()
+        yAxis = zAxis.cross(xAxis).normalize()
+
+        this[0, 0] = xAxis.x; this[1, 0] = xAxis.y; this[2, 0] = xAxis.z
+        this[0, 1] = yAxis.x; this[1, 1] = yAxis.y; this[2, 1] = yAxis.z
+        this[0, 2] = zAxis.x; this[1, 2] = zAxis.y; this[2, 2] = zAxis.z
+    }
+
     override fun hashCode(): Int {
         return data.contentHashCode()
     }
@@ -233,6 +283,26 @@ class Matrix4x4(private val data: FloatArray) {
                 0f,
                 0f
             ) // Matrix4x4(data)
+        }
+
+        /**
+         * Builds a pure rotation matrix from an axis-angle representation
+         * (Rodrigues' rotation formula). [axis] must be unit length.
+         */
+        fun rotateAxisAngle(angleRadians: Float, axis: Vec3): Matrix4x4 {
+            val c = kotlin.math.cos(angleRadians)
+            val s = kotlin.math.sin(angleRadians)
+            val t = 1f - c
+            val x = axis.x
+            val y = axis.y
+            val z = axis.z
+
+            return fromRows(
+                floatArrayOf(t * x * x + c, t * x * y - s * z, t * x * z + s * y, 0f),
+                floatArrayOf(t * x * y + s * z, t * y * y + c, t * y * z - s * x, 0f),
+                floatArrayOf(t * x * z - s * y, t * y * z + s * x, t * z * z + c, 0f),
+                floatArrayOf(0f, 0f, 0f, 1f)
+            )
         }
 
         /**Taken from http://www.cs.cmu.edu/~baraff/sigcourse/notesd1.pdf */
