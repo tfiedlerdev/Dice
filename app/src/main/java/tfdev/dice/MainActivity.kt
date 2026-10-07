@@ -36,7 +36,7 @@ class MainActivity : AppCompatActivity(), OnSeekBarChangeListener {
         renderView.setOnSceneInitializedListener { scene ->
             scene.apply {
                 // A large static floor every falling cube collides with and rests on.
-                val floor = GLCube(this@MainActivity, color = Vec4(0.2f, 0.25f, 0.35f, 1f)).apply {
+                val floor = GLCube(this@MainActivity, color = Vec4(0.55f, 0.58f, 0.65f, 1f)).apply {
                     scale.apply {
                         x = 4f
                         y = 0.2f
