@@ -11,10 +11,6 @@ import kotlin.math.abs
  * The most basic collision-resolution requirement: an axis-aligned box
  * dropped onto a static floor must come to rest ON the floor - not
  * penetrate through it, not hover above it, and not jitter forever.
- *
- * On the evaluated `collision-resolution` branch this exact scenario made
- * the box fall straight through the floor (penetration of several whole
- * units, not a small jitter) - see the PR description for details.
  */
 @RunWith(AndroidJUnit4::class)
 class RestingContactTest {

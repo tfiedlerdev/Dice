@@ -164,10 +164,8 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
                             y = 0.2f
                             z = 0.2f
                         }
-                        // A debug marker, not a physics body: it must stay fixed in its
-                        // parent's local space. isStatic (not a big `mass`) is what actually
-                        // excludes it from force/gravity integration - gravity acceleration
-                        // is mass-independent, so a huge mass alone still falls just as fast.
+                        // A debug marker, not a physics body: isStatic excludes it from
+                        // force/gravity integration, so it stays fixed in its parent's local space.
                         isStatic = true
                         setDirty()
                     }
@@ -199,8 +197,7 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
                             y = if(diff.y==0f) 0.1f else diff.y*0.7f
                             z = if(diff.z==0f) 0.1f else diff.z*0.7f
                         }
-                        // See the corner-indicator comment above: isStatic, not a big mass,
-                        // is what keeps this fixed relative to its parent.
+                        // See the corner-indicator comment above.
                         isStatic = true
 
                         setDirty()

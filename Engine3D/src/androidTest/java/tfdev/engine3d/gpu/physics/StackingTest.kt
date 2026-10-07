@@ -11,9 +11,9 @@ import kotlin.math.abs
  * Two boxes stacked on the floor must settle into a stable stack: the
  * bottom box resting on the floor, the top box resting on the bottom one,
  * neither sunk into the other. This is the scenario that most directly
- * exercises the multi-point contact manifold (a single deepest-corner
- * contact point, which is what the evaluated branch used, is exactly what
- * makes a flat resting box rock between corners instead of settling).
+ * exercises the multi-point contact manifold: a single deepest-corner
+ * contact point is not enough here, since that lets a flat resting box
+ * rock between corners instead of settling.
  */
 @RunWith(AndroidJUnit4::class)
 class StackingTest {
