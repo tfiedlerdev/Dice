@@ -28,7 +28,7 @@ class GLRenderer(
     // vertical) view direction, which is what ends up pointing "towards the top of
     // the screen"; -Z was picked arbitrarily.
     val camera =
-        Camera(center = Vec3(0f, 0f, 0f), eye = Vec3(0f, 8f, 0f), up = Vec3(0f, 0f, -1f))
+        Camera(center = Vec3(0f, 0f, 0f), eye = Vec3(0f, 4.5f, 0f), up = Vec3(0f, 0f, -1f))
     private val projectionMatrix4x4: Matrix4x4 = Matrix4x4()
 
 
@@ -69,7 +69,7 @@ class GLRenderer(
         glViewport(0, 0, width, height)
         val ratio: Float = width.toFloat() / height.toFloat()
 
-        Matrix4x4.project(projectionMatrix4x4, 90f, ratio, 0.1f, 20f)
+        Matrix4x4.project(projectionMatrix4x4, 90f, ratio, 0.1f, 10f)
     }
 
     companion object {

@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     // Half the floor's walkable footprint - used both to build the room and to
     // keep newly-added dice from spawning inside/outside a wall.
-    private val roomHalfExtent = 3f
+    private val roomHalfExtent = 2f
     private val wallHeight = 1f
     private val wallThickness = 0.2f
 
@@ -77,12 +77,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
      * tray. Depending on how you hold the phone relative to the on-screen top-down
      * view, you may need to flip a sign below to match - the physics itself
      * (applying the raw reading as a lateral acceleration) is correct either way.
+     *
+     * The raw reading (capped at +-9.8 m/s^2, reached only at a full 90-degree
+     * tilt) makes for a very gentle nudge, easily lost to friction - [TILT_SENSITIVITY]
+     * amplifies it so a comfortable, small tilt produces a clearly visible push.
      */
     override fun onSensorChanged(event: SensorEvent?) {
         if (event == null || event.sensor.type != Sensor.TYPE_ACCELEROMETER) return
         val scene = renderView.scene
-        scene.externalAcceleration.x = event.values[0]
-        scene.externalAcceleration.z = -event.values[1]
+        scene.externalAcceleration.x = event.values[0] * TILT_SENSITIVITY
+        scene.externalAcceleration.z = -event.values[1] * TILT_SENSITIVITY
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -164,5 +168,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             2f,
             Random.nextFloat() * 2f * range - range
         )
+    }
+
+    companion object {
+        // Purely a feel tuning knob - see the onSensorChanged doc comment.
+        private const val TILT_SENSITIVITY = 3.5f
     }
 }

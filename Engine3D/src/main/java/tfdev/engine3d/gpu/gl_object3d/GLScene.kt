@@ -34,14 +34,27 @@ class GLScene : GLObject3D() {
      */
     val externalAcceleration = Vec3()
 
-    /** Adds [externalAcceleration] as a force to every non-static (top-level) object. */
+    /**
+     * Adds [externalAcceleration] as a force to every non-static (top-level) object,
+     * plus a matching torque so tilting doesn't just slide objects around but also
+     * tips/rolls them over - the direction a ball would roll if gravity's lateral
+     * component pointed along [externalAcceleration] (rotate it 90 degrees about Y).
+     */
     fun applyExternalAcceleration() {
         if (externalAcceleration.isZero()) return
+        val torque = Vec3(-externalAcceleration.z, 0f, externalAcceleration.x) * EXTERNAL_TORQUE_FACTOR
         for (child in children) {
             if (!child.isStatic) {
                 child.force += externalAcceleration * child.mass
+                child.torque += torque * child.mass
             }
         }
+    }
+
+    companion object {
+        // Scales the rolling torque relative to the linear tilt force; purely a feel
+        // tuning knob, not derived from anything physical like a dice's actual radius.
+        private const val EXTERNAL_TORQUE_FACTOR = 0.25f
     }
 
     /**
