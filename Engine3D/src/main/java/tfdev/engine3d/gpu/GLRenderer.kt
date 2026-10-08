@@ -10,11 +10,8 @@ import tfdev.engine3d.Camera
 import tfdev.engine3d.gpu.gl_object3d.GLScene
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
-import kotlin.math.atan2
-import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.min
-import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tan
 
@@ -72,17 +69,6 @@ class GLRenderer(
      */
     var tiltEnabled = true
 
-    /**
-     * Whether the angled light's horizontal direction (see [LightSource]) tracks
-     * [gravityUpDirection] (the device's physical tilt) or the camera's own current
-     * (tilt-eased, capped) direction instead. Either way, the azimuth only updates
-     * while the source direction has a non-negligible horizontal component - straight
-     * down has no well-defined azimuth, so holding/tilting the device flat just keeps
-     * the light wherever it last pointed rather than snapping it to an arbitrary angle.
-     */
-    var secondaryLightFollowsTilt = true
-    private var lastSecondaryLightAzimuth = 0f
-
     override fun onSurfaceCreated(unused: GL10, config: EGLConfig) {
         // Set the background frame color
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -139,36 +125,6 @@ class GLRenderer(
         smoothedUpDirection.z += (target.z - smoothedUpDirection.z) * t
 
         camera.setEyeDirection(cappedTiltDirection(), eyeDistance)
-        updateSecondaryLightDirection()
-    }
-
-    /**
-     * Re-derives the angled light's azimuth from [gravityUpDirection] when
-     * [secondaryLightFollowsTilt] is on, combines it with a fixed elevation, and
-     * pushes the result to the scene. When off, the azimuth is simply left wherever
-     * it last was - i.e. anchored to the room rather than the device - which is also
-     * why this can't instead read the camera's own (tilt-driven) direction: with no
-     * orbit control in this app, the camera's direction *is* just the device tilt, so
-     * doing that would make "off" behave identically to "on".
-     */
-    private fun updateSecondaryLightDirection() {
-        if (secondaryLightFollowsTilt) {
-            val horizontalLengthSq = gravityUpDirection.x * gravityUpDirection.x + gravityUpDirection.z * gravityUpDirection.z
-            if (horizontalLengthSq > AZIMUTH_DEADZONE_SQ) {
-                lastSecondaryLightAzimuth = atan2(gravityUpDirection.x, gravityUpDirection.z)
-            }
-        }
-
-        val elevationRad = Math.toRadians(SECONDARY_LIGHT_ELEVATION_DEGREES.toDouble()).toFloat()
-        val horizontal = cos(elevationRad)
-        val vertical = sin(elevationRad)
-        scene.setSecondaryLightDirection(
-            Vec3(
-                horizontal * sin(lastSecondaryLightAzimuth),
-                vertical,
-                horizontal * cos(lastSecondaryLightAzimuth)
-            )
-        )
     }
 
     private fun cappedTiltDirection(): Vec3 {
@@ -214,7 +170,6 @@ class GLRenderer(
 
         camera.setEyeDirection(cappedTiltDirection(), eyeDistance)
         scene.setLightHeight(eyeDistance)
-        updateSecondaryLightDirection()
         Matrix4x4.project(projectionMatrix4x4, FOV_Y_DEGREES, viewportAspect, 0.1f, eyeDistance + FAR_PLANE_MARGIN)
     }
 
@@ -243,11 +198,5 @@ class GLRenderer(
         private val MAX_TILT_TAN = tan(Math.toRadians(22.0)).toFloat()
 
         private val NEUTRAL_UP_DIRECTION = Vec3(0f, 1f, 0f)
-
-        /** How high above the horizon the angled light sits, regardless of its azimuth. */
-        private const val SECONDARY_LIGHT_ELEVATION_DEGREES = 35f
-
-        /** Below this horizontal-component-squared, the azimuth source is too close to straight down/up to trust; keep the last azimuth instead. */
-        private const val AZIMUTH_DEADZONE_SQ = 0.01f
     }
 }

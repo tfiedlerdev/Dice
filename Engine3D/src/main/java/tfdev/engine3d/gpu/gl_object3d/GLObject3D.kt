@@ -149,8 +149,6 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
                 glUniform3fv(secondaryDirectionHandle, 1, lightSource.secondaryDirection)
                 val pointLightEnabledHandle = glGetUniformLocation(program, "uPointLightEnabled")
                 glUniform1f(pointLightEnabledHandle, if (lightSource.pointLightEnabled) 1f else 0f)
-                val secondaryLightEnabledHandle = glGetUniformLocation(program, "uSecondaryLightEnabled")
-                glUniform1f(secondaryLightEnabledHandle, if (lightSource.secondaryLightEnabled) 1f else 0f)
             }
 
             val uvBuffer = uvBuffer

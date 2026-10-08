@@ -11,7 +11,6 @@ uniform vec4 uLightColor;
 uniform vec3 uLightPosition;
 uniform vec3 uSecondaryLightDirection;
 uniform float uPointLightEnabled;
-uniform float uSecondaryLightEnabled;
 float uLightPower = 0.85;
 // Directional (not positional) lights don't attenuate with distance the way the point
 // light above does, so this is tuned down on its own to compensate.
@@ -77,7 +76,7 @@ void main() {
     // walls would only ever show their flat ambient color - this angled, un-attenuated
     // light is what actually reveals them.
     float secondaryCosTheta = clamp(dot(normal, normalize(uSecondaryLightDirection)), 0., 1.);
-    float secondaryLightAmount = uSecondaryLightEnabled * uSecondaryLightPower * secondaryCosTheta;
+    float secondaryLightAmount = uSecondaryLightPower * secondaryCosTheta;
 
     vec4 MaterialAmbientColor = vec4(0.5, 0.5, 0.5, 1.) * MaterialDiffuseColor;
     fragColor = MaterialAmbientColor + MaterialDiffuseColor * vec4(vec3(uLightColor) * (pointLightAmount + secondaryLightAmount), 1.);

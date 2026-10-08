@@ -79,11 +79,6 @@ class GLRender3DView : GLSurfaceView {
         renderer.tiltEnabled = enabled
     }
 
-    /** See [GLRenderer.secondaryLightFollowsTilt]. */
-    fun setSecondaryLightFollowsTilt(followsTilt: Boolean) {
-        renderer.secondaryLightFollowsTilt = followsTilt
-    }
-
     companion object{
     }
 }
