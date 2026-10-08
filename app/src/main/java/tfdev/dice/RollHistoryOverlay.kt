@@ -1,82 +1,83 @@
 package tfdev.dice
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
-import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import androidx.appcompat.app.AlertDialog
 
 /**
- * Manages the "latest rolls" overlay: a compact, transparent-background stack of recent
- * results (newest on top) that fade out after [FADE_AFTER_MILLIS] - except whichever is
- * still the latest, which stays up regardless of age - plus a full scrollable history of
- * every roll since the last reset, shown on tap or swipe (see [showExpandedHistory]).
+ * The roll-history feed: oldest entry at the top, newest at the bottom, in a plain
+ * scrollable list rather than a separate "compact feed" that has to be tapped open into
+ * a full view - the whole session is already right there, just scroll. Normally
+ * auto-scrolled to the bottom so a new result is always revealed as it comes in (older
+ * ones correspondingly scroll up out of view - no separate fade-out timer needed), but a
+ * manual drag suspends that until the user scrolls back down to the bottom themselves.
  */
 class RollHistoryOverlay(
     private val context: Context,
-    private val compactContainer: LinearLayout
+    private val scrollView: ScrollView,
+    private val container: LinearLayout
 ) {
-    private val allEntries = mutableListOf<RollEntry>()
-    private val fadeHandler = Handler(Looper.getMainLooper())
-    private var expandedDialog: AlertDialog? = null
-
-    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-        override fun onDown(e: MotionEvent): Boolean = true
-        override fun onSingleTapUp(e: MotionEvent): Boolean {
-            showExpandedHistory()
-            return true
-        }
-        override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-            showExpandedHistory()
-            return true
-        }
-    })
+    private var autoScrollToBottom = true
 
     init {
-        compactContainer.setOnTouchListener { _, event -> gestureDetector.onTouchEvent(event); true }
+        // Returning false leaves the touch free for the ScrollView's own handling - this
+        // is just to notice "the user is dragging" and suspend auto-scroll while they are.
+        scrollView.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                autoScrollToBottom = false
+            }
+            false
+        }
+        scrollView.viewTreeObserver.addOnScrollChangedListener {
+            if (scrollView.scrollY >= maxScrollY()) {
+                autoScrollToBottom = true
+            }
+        }
+    }
+
+    private fun maxScrollY(): Int {
+        val content = scrollView.getChildAt(0) ?: return 0
+        return (content.height - scrollView.height).coerceAtLeast(0)
     }
 
     fun addEntry(entry: RollEntry) {
-        allEntries.add(entry)
-        val row = buildRow(entry, tileSizeDp = 36)
-        compactContainer.addView(row, 0)
-        fadeHandler.postDelayed({ checkFade(row) }, FADE_AFTER_MILLIS)
+        val row = buildRow(entry).apply {
+            alpha = 0f
+            translationY = context.resources.displayMetrics.density * 24f
+        }
+        container.addView(row)
+        row.animate().alpha(1f).translationY(0f).setDuration(ENTRY_ANIMATION_MILLIS).start()
+
+        if (autoScrollToBottom) {
+            // Posted so it runs after the new row has actually been laid out - scrolling
+            // to "the bottom" before that would use the old (shorter) content height.
+            scrollView.post { scrollView.smoothScrollTo(0, maxScrollY()) }
+        }
     }
 
-    /** Clears both the compact feed and the full session history - call on Reset. */
+    /** Clears the whole session's history - call on Reset. */
     fun clear() {
-        allEntries.clear()
-        compactContainer.removeAllViews()
-        expandedDialog?.dismiss()
+        container.removeAllViews()
+        autoScrollToBottom = true
     }
 
     fun setEnabled(enabled: Boolean) {
-        compactContainer.visibility = if (enabled) View.VISIBLE else View.GONE
-        if (!enabled) expandedDialog?.dismiss()
+        scrollView.visibility = if (enabled) View.VISIBLE else View.GONE
     }
 
-    private fun checkFade(row: View) {
-        if (compactContainer.indexOfChild(row) == 0) {
-            // Still the latest entry - exempt from fading; just check back later.
-            fadeHandler.postDelayed({ checkFade(row) }, FADE_RECHECK_MILLIS)
-            return
-        }
-        row.animate().alpha(0f).setDuration(FADE_DURATION_MILLIS).withEndAction {
-            compactContainer.removeView(row)
-        }.start()
-    }
-
-    private fun buildRow(entry: RollEntry, tileSizeDp: Int): LinearLayout {
+    private fun buildRow(entry: RollEntry): LinearLayout {
         val density = context.resources.displayMetrics.density
-        val tileSizePx = (tileSizeDp * density).toInt()
+        val tileSizePx = (TILE_SIZE_DP * density).toInt()
         val marginPx = (3 * density).toInt()
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, marginPx * 2)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = marginPx * 2 }
             for (result in entry.dieResults) {
                 addView(DieFaceView(context).apply {
                     faceValue = result.faceValue
@@ -87,28 +88,8 @@ class RollHistoryOverlay(
         }
     }
 
-    private fun showExpandedHistory() {
-        if (allEntries.isEmpty() || expandedDialog?.isShowing == true) return
-        val density = context.resources.displayMetrics.density
-        val listLayout = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            val paddingPx = (16 * density).toInt()
-            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
-            for (entry in allEntries.asReversed()) {
-                addView(buildRow(entry, tileSizeDp = 44))
-            }
-        }
-        expandedDialog = AlertDialog.Builder(context)
-            .setTitle(R.string.title_roll_history)
-            .setView(ScrollView(context).apply { addView(listLayout) })
-            .setPositiveButton(android.R.string.ok, null)
-            .setOnDismissListener { expandedDialog = null }
-            .show()
-    }
-
     companion object {
-        private const val FADE_AFTER_MILLIS = 10_000L
-        private const val FADE_RECHECK_MILLIS = 1_000L
-        private const val FADE_DURATION_MILLIS = 400L
+        private const val TILE_SIZE_DP = 36
+        private const val ENTRY_ANIMATION_MILLIS = 250L
     }
 }

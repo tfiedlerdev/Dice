@@ -107,7 +107,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         renderView.enableYRotation = false
 
         diceColorRow = DiceColorRow(this, findViewById(R.id.linearLayout_diceColors_activityMain))
-        rollHistoryOverlay = RollHistoryOverlay(this, findViewById(R.id.linearLayout_rollHistory_activityMain))
+        rollHistoryOverlay = RollHistoryOverlay(
+            this,
+            findViewById(R.id.scrollView_rollHistory_activityMain),
+            findViewById(R.id.linearLayout_rollHistory_activityMain)
+        )
 
         val controlsPanel = findViewById<View>(R.id.linearLayout_controls_activityMain)
         val controlsPanelBasePadding = controlsPanel.paddingBottom
@@ -120,9 +124,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // Without this, the overlay's own touch targets sit under the status bar's
         // touchable strip (even though it's transparent and the content draws behind
         // it) and taps there never reach the overlay at all.
-        val rollHistoryContainer = findViewById<View>(R.id.linearLayout_rollHistory_activityMain)
-        val rollHistoryBasePadding = rollHistoryContainer.paddingTop
-        ViewCompat.setOnApplyWindowInsetsListener(rollHistoryContainer) { view, insets ->
+        val rollHistoryScrollView = findViewById<View>(R.id.scrollView_rollHistory_activityMain)
+        val rollHistoryBasePadding = rollHistoryScrollView.paddingTop
+        ViewCompat.setOnApplyWindowInsetsListener(rollHistoryScrollView) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.updatePadding(top = rollHistoryBasePadding + systemBars.top)
             insets
