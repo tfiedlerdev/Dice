@@ -68,24 +68,24 @@ class GLCube(
         1f, 0f, 0f,
         1f, 0f, 0f,
         1f, 0f, 0f,
-        0f, 0f, -1f, // back
-        0f, 0f, -1f,
-        0f, 0f, -1f,
-        0f, 0f, -1f,
-        0f, 0f, -1f,
-        0f, 0f, -1f,
+        0f, 0f, 1f, // back (vertices are all at z=+0.5, so the outward normal is +Z)
+        0f, 0f, 1f,
+        0f, 0f, 1f,
+        0f, 0f, 1f,
+        0f, 0f, 1f,
+        0f, 0f, 1f,
         -1f, 0f, 0f, // left
         -1f, 0f, 0f,
         -1f, 0f, 0f,
         -1f, 0f, 0f,
         -1f, 0f, 0f,
         -1f, 0f, 0f,
-        0f, 0f, 1f, // front
-        0f, 0f, 1f,
-        0f, 0f, 1f,
-        0f, 0f, 1f,
-        0f, 0f, 1f,
-        0f, 0f, 1f,
+        0f, 0f, -1f, // front (vertices are all at z=-0.5, so the outward normal is -Z)
+        0f, 0f, -1f,
+        0f, 0f, -1f,
+        0f, 0f, -1f,
+        0f, 0f, -1f,
+        0f, 0f, -1f,
         0f, 1f, 0f, // top
         0f, 1f, 0f,
         0f, 1f, 0f,

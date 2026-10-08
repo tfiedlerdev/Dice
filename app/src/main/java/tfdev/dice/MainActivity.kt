@@ -7,6 +7,9 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.widget.Button
+import android.widget.CompoundButton
+import android.widget.SeekBar
+import android.widget.Switch
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.gpu.GLRender3DView
@@ -25,6 +28,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private val dice = mutableListOf<GLObject3D>()
     private val dieScale = 0.5f
+
+    /** Set by the shake-sensitivity slider; see handleShakeReading. */
+    private var shakeSensitivity = DEFAULT_SHAKE_SENSITIVITY
 
     // Half the floor's walkable footprint - used both to build the room and to
     // keep newly-added dice from spawning inside/outside a wall.
@@ -56,6 +62,22 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         findViewById<Button>(R.id.button_addDie_activityMain).setOnClickListener {
             renderView.queueEvent { addDieOnGlThread(randomSpawnPosition()) }
         }
+
+        findViewById<SeekBar>(R.id.seekBar_shakeSensitivity_activityMain).apply {
+            progress = sensitivityToProgress(DEFAULT_SHAKE_SENSITIVITY)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    shakeSensitivity = progressToSensitivity(progress)
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+        }
+
+        findViewById<Switch>(R.id.switch_cameraTilt_activityMain)
+            .setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+                renderView.setCameraTiltEnabled(isChecked)
+            }
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
@@ -138,9 +160,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             return
         }
         val excess = (magnitude - SHAKE_DEADZONE) / magnitude
-        scene.externalAcceleration.x = -worldAx * excess * SHAKE_SENSITIVITY
-        scene.externalAcceleration.y = -worldAy * excess * SHAKE_SENSITIVITY
-        scene.externalAcceleration.z = -worldAz * excess * SHAKE_SENSITIVITY
+        scene.externalAcceleration.x = -worldAx * excess * shakeSensitivity
+        scene.externalAcceleration.y = -worldAy * excess * shakeSensitivity
+        scene.externalAcceleration.z = -worldAz * excess * shakeSensitivity
+    }
+
+    private fun progressToSensitivity(progress: Int): Float {
+        val fraction = progress / 100f
+        return MIN_SHAKE_SENSITIVITY + fraction * (MAX_SHAKE_SENSITIVITY - MIN_SHAKE_SENSITIVITY)
+    }
+
+    private fun sensitivityToProgress(sensitivity: Float): Int {
+        val fraction = (sensitivity - MIN_SHAKE_SENSITIVITY) / (MAX_SHAKE_SENSITIVITY - MIN_SHAKE_SENSITIVITY)
+        return (fraction * 100f).toInt().coerceIn(0, 100)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -242,6 +274,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     companion object {
         // Purely feel-tuning knobs - see the handleShakeReading doc comment.
         private const val SHAKE_DEADZONE = 3.5f // m/s^2
-        private const val SHAKE_SENSITIVITY = 1.2f
+        private const val MIN_SHAKE_SENSITIVITY = 0.3f
+        private const val MAX_SHAKE_SENSITIVITY = 3f
+        private const val DEFAULT_SHAKE_SENSITIVITY = 1.2f
     }
 }

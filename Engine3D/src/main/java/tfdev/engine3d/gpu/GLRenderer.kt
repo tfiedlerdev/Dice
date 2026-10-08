@@ -62,6 +62,13 @@ class GLRenderer(
     var gravityUpDirection = Vec3(0f, 1f, 0f)
     private val smoothedUpDirection = Vec3(0f, 1f, 0f)
 
+    /**
+     * When false, the camera eases back to looking straight down (the same smooth,
+     * asymptotic easing as a real tilt, just towards a fixed target) and ignores
+     * [gravityUpDirection] until re-enabled, rather than snapping instantly either way.
+     */
+    var tiltEnabled = true
+
     override fun onSurfaceCreated(unused: GL10, config: EGLConfig) {
         // Set the background frame color
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -109,11 +116,13 @@ class GLRenderer(
 
         // Exponential/asymptotic approach: each frame covers the same *fraction* of
         // whatever gap remains, so it slows down smoothly as it nears the target
-        // instead of ever visibly snapping to it.
+        // instead of ever visibly snapping to it - including the target itself
+        // changing when tilt is toggled off/on.
+        val target = if (tiltEnabled) gravityUpDirection else NEUTRAL_UP_DIRECTION
         val t = (1f - exp(-TILT_EASING_RATE * dt)).coerceIn(0f, 1f)
-        smoothedUpDirection.x += (gravityUpDirection.x - smoothedUpDirection.x) * t
-        smoothedUpDirection.y += (gravityUpDirection.y - smoothedUpDirection.y) * t
-        smoothedUpDirection.z += (gravityUpDirection.z - smoothedUpDirection.z) * t
+        smoothedUpDirection.x += (target.x - smoothedUpDirection.x) * t
+        smoothedUpDirection.y += (target.y - smoothedUpDirection.y) * t
+        smoothedUpDirection.z += (target.z - smoothedUpDirection.z) * t
 
         camera.setEyeDirection(cappedTiltDirection(), eyeDistance)
     }
@@ -186,5 +195,7 @@ class GLRenderer(
 
         /** tan(22 degrees): the camera can lean this far off straight-down at most, however hard the device is tilted. */
         private val MAX_TILT_TAN = tan(Math.toRadians(22.0)).toFloat()
+
+        private val NEUTRAL_UP_DIRECTION = Vec3(0f, 1f, 0f)
     }
 }

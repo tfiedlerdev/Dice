@@ -74,6 +74,11 @@ class GLRender3DView : GLSurfaceView {
         renderer.roomFootprintHalfExtent = halfExtent
     }
 
+    /** See [GLRenderer.tiltEnabled]. */
+    fun setCameraTiltEnabled(enabled: Boolean) {
+        renderer.tiltEnabled = enabled
+    }
+
     companion object{
     }
 }
