@@ -32,6 +32,15 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
     open val lightSource: LightSource? = null
     open val boundingBox: BoundingBox? = null
     val color: FloatArray = floatArrayOf(color.x, color.y, color.z, color.w)
+
+    /** Recolors this object in place - picked up on the next [drawSelf], no [setDirty] needed. */
+    fun setColor(newColor: Vec4) {
+        color[0] = newColor.x
+        color[1] = newColor.y
+        color[2] = newColor.z
+        color[3] = newColor.w
+    }
+
     private fun getObjectLightSource(): LightSource? {
         if (lightSource != null) {
             return lightSource

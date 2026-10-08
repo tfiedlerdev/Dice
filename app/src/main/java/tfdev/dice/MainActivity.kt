@@ -1,11 +1,14 @@
 package tfdev.dice
 
 import androidx.appcompat.app.AppCompatActivity
+import android.graphics.Color
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.Button
 import android.widget.CompoundButton
 import android.widget.SeekBar
@@ -28,6 +31,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private val dice = mutableListOf<GLObject3D>()
     private val roomPieces = mutableListOf<GLObject3D>()
+
+    /** Each room surface together with the (fixed) saturation/value it keeps while the hue drifts. */
+    private data class RoomSurface(val piece: GLObject3D, val saturation: Float, val value: Float)
+    private val roomSurfaces = mutableListOf<RoomSurface>()
+
+    private val colorCycleHandler = Handler(Looper.getMainLooper())
+    private val colorCycleTick = object : Runnable {
+        override fun run() {
+            renderView.queueEvent { recolorRoomSurfacesOnGlThread() }
+            colorCycleHandler.postDelayed(this, ROOM_COLOR_UPDATE_INTERVAL_MILLIS)
+        }
+    }
+
     private val dieScale = 0.5f
 
     /** Set by the shake-sensitivity slider; see handleShakeReading. */
@@ -110,11 +126,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onResume()
         gravitySensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
         linearAccelerationSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+        colorCycleHandler.post(colorCycleTick)
     }
 
     override fun onPause() {
         super.onPause()
         sensorManager.unregisterListener(this)
+        colorCycleHandler.removeCallbacks(colorCycleTick)
     }
 
     /**
@@ -193,10 +211,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
-    /** How far out the room should extend to comfortably fit [diceCount] dice. */
+    /**
+     * How far out the room should extend to comfortably fit [diceCount] dice - grows
+     * the floor's *area* linearly with dice count (rather than its side length/half-extent,
+     * which would grow the area quadratically and make the room balloon far faster than
+     * the number of dice actually warrants).
+     */
     private fun targetRoomHalfExtent(diceCount: Int): Float {
         val extraDice = (diceCount.coerceAtLeast(BASE_DICE_COUNT) - BASE_DICE_COUNT)
-        return (BASE_ROOM_HALF_EXTENT + extraDice * ROOM_GROWTH_PER_DIE).coerceAtMost(MAX_ROOM_HALF_EXTENT)
+        val baseArea = (BASE_ROOM_HALF_EXTENT * 2f) * (BASE_ROOM_HALF_EXTENT * 2f)
+        val maxArea = (MAX_ROOM_HALF_EXTENT * 2f) * (MAX_ROOM_HALF_EXTENT * 2f)
+        val area = (baseArea + extraDice * ROOM_AREA_GROWTH_PER_DIE).coerceAtMost(maxArea)
+        return sqrt(area) / 2f
     }
 
     /**
@@ -211,10 +237,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             scene.removeChild(piece)
         }
         roomPieces.clear()
+        roomSurfaces.clear()
 
         roomHalfExtent = targetRoomHalfExtent(diceCount)
+        val hue = currentRoomHueDegrees()
 
-        val floor = GLCube(this, color = Vec4(0.55f, 0.58f, 0.65f, 1f)).apply {
+        val floor = GLCube(this, color = hsvColor(hue, FLOOR_SATURATION, FLOOR_VALUE)).apply {
             scale.apply {
                 x = roomHalfExtent * 2f
                 y = 0.2f
@@ -226,9 +254,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
         scene.addChild(floor)
         roomPieces.add(floor)
+        roomSurfaces.add(RoomSurface(floor, FLOOR_SATURATION, FLOOR_VALUE))
 
         val ceilingThickness = 0.2f
-        val ceiling = GLCube(this, color = Vec4(0.3f, 0.32f, 0.38f, 1f)).apply {
+        val ceiling = GLCube(this, color = hsvColor(hue, CEILING_SATURATION, CEILING_VALUE)).apply {
             scale.apply {
                 x = roomHalfExtent * 2f
                 y = ceilingThickness
@@ -240,8 +269,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
         scene.addChild(ceiling)
         roomPieces.add(ceiling)
+        roomSurfaces.add(RoomSurface(ceiling, CEILING_SATURATION, CEILING_VALUE))
 
-        val wallColor = Vec4(0.35f, 0.38f, 0.45f, 1f)
+        val wallColor = hsvColor(hue, WALL_SATURATION, WALL_VALUE)
         val wallCenterOffset = roomHalfExtent + wallThickness / 2f
         val wallLength = roomHalfExtent * 2f + wallThickness * 2f
 
@@ -256,6 +286,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
             scene.addChild(piece)
             roomPieces.add(piece)
+            roomSurfaces.add(RoomSurface(piece, WALL_SATURATION, WALL_VALUE))
         }
         wall(wallLength, wallThickness, 0f, wallCenterOffset)  // north
         wall(wallLength, wallThickness, 0f, -wallCenterOffset) // south
@@ -263,6 +294,37 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         wall(wallThickness, wallLength, -wallCenterOffset, 0f) // west
 
         renderView.setRoomFootprintHalfExtent(roomHalfExtent + wallThickness)
+    }
+
+    /** Degrees around the hue wheel the room's surfaces should currently sit at - drifts slowly, full circle every [ROOM_COLOR_CYCLE_MILLIS]. */
+    private fun currentRoomHueDegrees(): Float {
+        val phase = (System.currentTimeMillis() % ROOM_COLOR_CYCLE_MILLIS) / ROOM_COLOR_CYCLE_MILLIS.toFloat()
+        return phase * 360f
+    }
+
+    /**
+     * Re-tints every room surface to the current hue, keeping each one's own
+     * saturation/value (so the floor/walls/ceiling keep their relative brightness) -
+     * called on a timer (see colorCycleTick) for a slow ambient color drift.
+     * Must run on the GL thread.
+     */
+    private fun recolorRoomSurfacesOnGlThread() {
+        if (roomSurfaces.isEmpty()) return
+        val hue = currentRoomHueDegrees()
+        for (surface in roomSurfaces) {
+            surface.piece.setColor(hsvColor(hue, surface.saturation, surface.value))
+        }
+    }
+
+    /** A deliberately desaturated, moderate-brightness color, so the room reads as subtle ambient tinting rather than a bright/signal color. */
+    private fun hsvColor(hueDegrees: Float, saturation: Float, value: Float): Vec4 {
+        val argb = Color.HSVToColor(floatArrayOf(hueDegrees, saturation, value))
+        return Vec4(
+            Color.red(argb) / 255f,
+            Color.green(argb) / 255f,
+            Color.blue(argb) / 255f,
+            1f
+        )
     }
 
     /**
@@ -329,11 +391,25 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         // Also purely feel-tuning knobs - see targetRoomHalfExtent. The room (and the
         // camera/light framing it - GLRenderer.recomputeFraming) starts sized for
-        // BASE_DICE_COUNT dice and grows by ROOM_GROWTH_PER_DIE for each one beyond
-        // that, capped at MAX_ROOM_HALF_EXTENT so it can't grow without bound.
+        // BASE_DICE_COUNT dice and its *floor area* grows by ROOM_AREA_GROWTH_PER_DIE
+        // for each one beyond that, capped at MAX_ROOM_HALF_EXTENT so it can't grow
+        // without bound.
         private const val BASE_DICE_COUNT = 1
         private const val BASE_ROOM_HALF_EXTENT = 1.2f
-        private const val ROOM_GROWTH_PER_DIE = 0.3f
+        private const val ROOM_AREA_GROWTH_PER_DIE = 5f
         private const val MAX_ROOM_HALF_EXTENT = 3f
+
+        // The room's ambient color: hue drifts slowly through the full color wheel
+        // (see currentRoomHueDegrees/recolorRoomSurfacesOnGlThread), but saturation and
+        // value are kept low/moderate per surface so it always reads as a subtle tint
+        // rather than a bright, attention-grabbing color.
+        private const val ROOM_COLOR_CYCLE_MILLIS = 60_000L
+        private const val ROOM_COLOR_UPDATE_INTERVAL_MILLIS = 100L
+        private const val FLOOR_SATURATION = 0.28f
+        private const val FLOOR_VALUE = 0.60f
+        private const val WALL_SATURATION = 0.30f
+        private const val WALL_VALUE = 0.42f
+        private const val CEILING_SATURATION = 0.32f
+        private const val CEILING_VALUE = 0.32f
     }
 }
