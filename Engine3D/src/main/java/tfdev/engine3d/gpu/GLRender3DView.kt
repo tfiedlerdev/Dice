@@ -6,6 +6,7 @@ import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
+import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
 import tfdev.engine3d.gpu.gl_object3d.GLScene
 
 class GLRender3DView : GLSurfaceView {
@@ -61,6 +62,11 @@ class GLRender3DView : GLSurfaceView {
 
     fun setOnSceneInitializedListener(listener:((scene: GLScene) -> Unit)) {
         renderer.onSceneInitialized = listener
+    }
+
+    /** See [GLRenderer.gravityUpDirection]. */
+    fun setGravityUpDirection(direction: Vec3) {
+        renderer.gravityUpDirection = direction
     }
 
     companion object{

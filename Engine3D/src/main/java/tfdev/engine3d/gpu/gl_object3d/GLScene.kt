@@ -13,10 +13,9 @@ class GLScene : GLObject3D() {
         get() = null
     override val vertexCount: Int
         get() = 0
-    override val lightSource = LightSource(
-        Vec3(-0.2f, 1f, 0f), Vec3(0.75f, 1.5f, 0f),
-        Vec4(1f, 1f, 1f, 1f)
-    )
+    // Positioned to sit just below a ceiling, centered over the playing field, looking
+    // straight down - matches the room MainActivity builds (see its roomHeight).
+    override val lightSource = LightSource(Vec3(0f, 2.7f, 0f), Vec4(1f, 1f, 1f, 1f))
 
     init {
         // The scene root is a container, not a physics body - without this it would

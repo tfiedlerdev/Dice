@@ -22,6 +22,13 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
     open val drawListLength: Int? = null
     open val uvBuffer: FloatBuffer? = null
     open val normalBuffer: FloatBuffer? = null
+
+    /**
+     * Optional per-vertex value (e.g. which die face 1-6 a vertex belongs to) the
+     * fragment shader can use to vary what it draws per-face within a single draw
+     * call, without a texture. Null means "not used" (plain [color] everywhere).
+     */
+    open val faceValueBuffer: FloatBuffer? = null
     open val lightSource: LightSource? = null
     open val boundingBox: BoundingBox? = null
     val color: FloatArray = floatArrayOf(color.x, color.y, color.z, color.w)
@@ -125,8 +132,6 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
 
             val lightSource = getObjectLightSource()
             if(lightSource!=null){
-                val lightDirectionHandle = glGetUniformLocation(program, "uLightDirection")
-                glUniform3fv(lightDirectionHandle, 1, lightSource.direction)
                 val lightPositionHandle = glGetUniformLocation(program, "uLightPosition")
                 glUniform3fv(lightPositionHandle, 1, lightSource.position)
                 val lightColorHandle = glGetUniformLocation(program, "uLightColor")
@@ -164,6 +169,21 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
                     4*3,
                     normalBuffer
                 )
+            }
+            val faceValueBuffer = faceValueBuffer
+            if (faceValueBuffer != null) {
+                val faceValueHandle = glGetAttribLocation(program, "vFaceValue")
+                if (faceValueHandle >= 0) {
+                    glEnableVertexAttribArray(faceValueHandle)
+                    glVertexAttribPointer(
+                        faceValueHandle,
+                        1,
+                        GL_FLOAT,
+                        false,
+                        4,
+                        faceValueBuffer
+                    )
+                }
             }
             // Draw the triangle
             val drawListLength = drawListLength

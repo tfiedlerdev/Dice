@@ -13,12 +13,14 @@ import tfdev.engine3d.gpu.GLRender3DView
 import tfdev.engine3d.gpu.gl_object3d.GLCube
 import tfdev.engine3d.gpu.gl_object3d.GLObject3D
 import tfdev.engine3d.gpu.gl_object3d.GLScene
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var renderView: GLRender3DView
     private lateinit var sensorManager: SensorManager
-    private var accelerometer: Sensor? = null
+    private var gravitySensor: Sensor? = null
+    private var linearAccelerationSensor: Sensor? = null
 
     private val dice = mutableListOf<GLObject3D>()
     private val dieScale = 0.5f
@@ -26,7 +28,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     // Half the floor's walkable footprint - used both to build the room and to
     // keep newly-added dice from spawning inside/outside a wall.
     private val roomHalfExtent = 2f
-    private val wallHeight = 1f
+    private val roomHeight = 3f
     private val wallThickness = 0.2f
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +51,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
+        linearAccelerationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
 
         // This callback is invoked from onSurfaceCreated, i.e. already on the GL thread.
         renderView.setOnSceneInitializedListener { scene ->
@@ -60,9 +63,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onResume() {
         super.onResume()
-        accelerometer?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
-        }
+        gravitySensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+        linearAccelerationSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
     }
 
     override fun onPause() {
@@ -71,22 +73,67 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     /**
-     * Treats the device's accelerometer reading as if the whole playing field were
-     * tilted by that amount: holding the phone flat and tilting it left/right or
-     * forward/back pushes the dice around exactly as if they sat in a real tilted
-     * tray. Depending on how you hold the phone relative to the on-screen top-down
-     * view, you may need to flip a sign below to match - the physics itself
-     * (applying the raw reading as a lateral acceleration) is correct either way.
+     * Two very different things come off the same physical sensor data, split here
+     * into two Android sensor types that do the separating for us:
      *
-     * The raw reading (capped at +-9.8 m/s^2, reached only at a full 90-degree
-     * tilt) makes for a very gentle nudge, easily lost to friction - [TILT_SENSITIVITY]
-     * amplifies it so a comfortable, small tilt produces a clearly visible push.
+     * - TYPE_GRAVITY is the *slow*, gravity-only component (Android's own sensor
+     *   fusion already filters out shake/jitter) - how the device is being *held*.
+     *   That only ever retargets the camera's lean (see GLRenderer.updateCameraTilt),
+     *   never pushes the dice - a held tilt is not supposed to act like a sustained
+     *   sideways gravity on the dice themselves, just like looking at a tilted table
+     *   from a tilted angle.
+     * - TYPE_LINEAR_ACCELERATION is the device's own acceleration with gravity
+     *   already removed - i.e. exactly the *shaking* component. That's what pushes
+     *   the dice, and with real torque, not just a slide (see GLScene.applyExternalAcceleration).
      */
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event == null || event.sensor.type != Sensor.TYPE_ACCELEROMETER) return
+    override fun onSensorChanged(event: SensorEvent) {
+        when (event.sensor.type) {
+            Sensor.TYPE_GRAVITY -> handleGravityReading(event.values)
+            Sensor.TYPE_LINEAR_ACCELERATION -> handleShakeReading(event.values)
+        }
+    }
+
+    /**
+     * Device X/Y/Z map to world X/up/-Z throughout this file - i.e. this assumes the
+     * device is held roughly flat, screen up, matching the top-down camera. If you
+     * mostly hold the phone differently, these will need remapping to match.
+     */
+    private fun handleGravityReading(values: FloatArray) {
+        val gx = values[0]
+        val gy = values[1]
+        val gz = values[2]
+        val length = sqrt(gx * gx + gy * gy + gz * gz).coerceAtLeast(0.01f)
+        renderView.setGravityUpDirection(Vec3(gx / length, gz / length, -gy / length))
+    }
+
+    /**
+     * Treats the device as if it were the cup the dice are rattling around in:
+     * accelerating it one way pushes its contents the other way (the same reason a
+     * drink sloshes backward when a cup accelerates forward) - see
+     * GLScene.applyExternalAcceleration for where that pseudo-force actually gets
+     * applied, torque included.
+     *
+     * [SHAKE_DEADZONE] only lets a deliberate shake through - ordinary handling
+     * (picking the phone up, passing it to someone) reads as a few m/s^2 at most and
+     * is ignored outright, specifically so a thrown result can't be disturbed by
+     * passing the phone around to show people. Subtracting rather than clamping the
+     * deadzone also means a shake just past the threshold ramps in gradually instead
+     * of starting at full strength.
+     */
+    private fun handleShakeReading(values: FloatArray) {
+        val worldAx = values[0]
+        val worldAy = values[2]
+        val worldAz = -values[1]
+        val magnitude = sqrt(worldAx * worldAx + worldAy * worldAy + worldAz * worldAz)
         val scene = renderView.scene
-        scene.externalAcceleration.x = event.values[0] * TILT_SENSITIVITY
-        scene.externalAcceleration.z = -event.values[1] * TILT_SENSITIVITY
+        if (magnitude < SHAKE_DEADZONE) {
+            scene.externalAcceleration.zeros()
+            return
+        }
+        val excess = (magnitude - SHAKE_DEADZONE) / magnitude
+        scene.externalAcceleration.x = -worldAx * excess * SHAKE_SENSITIVITY
+        scene.externalAcceleration.y = -worldAy * excess * SHAKE_SENSITIVITY
+        scene.externalAcceleration.z = -worldAz * excess * SHAKE_SENSITIVITY
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -104,14 +151,29 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
         scene.addChild(floor)
 
+        val ceilingThickness = 0.2f
+        val ceiling = GLCube(this, color = Vec4(0.3f, 0.32f, 0.38f, 1f)).apply {
+            scale.apply {
+                x = roomHalfExtent * 2f
+                y = ceilingThickness
+                z = roomHalfExtent * 2f
+            }
+            pos.y = roomHeight + ceilingThickness / 2f
+            isStatic = true
+            setDirty()
+        }
+        scene.addChild(ceiling)
+
         val wallColor = Vec4(0.35f, 0.38f, 0.45f, 1f)
         val wallCenterOffset = roomHalfExtent + wallThickness / 2f
         val wallLength = roomHalfExtent * 2f + wallThickness * 2f
 
+        // Walls span the full floor-to-ceiling height, so the room is fully sealed -
+        // no amount of bouncing/shaking can throw a die out.
         fun wall(sx: Float, sz: Float, px: Float, pz: Float) {
             scene.addChild(GLCube(this, color = wallColor).apply {
-                scale.apply { x = sx; y = wallHeight; z = sz }
-                pos.apply { x = px; y = wallHeight / 2f; z = pz }
+                scale.apply { x = sx; y = roomHeight; z = sz }
+                pos.apply { x = px; y = roomHeight / 2f; z = pz }
                 isStatic = true
                 setDirty()
             })
@@ -148,7 +210,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             position.y,
             position.z.coerceIn(-roomHalfExtent + margin, roomHalfExtent - margin)
         )
-        val die = GLCube(this).apply {
+        val die = GLCube(this, color = Vec4(0.95f, 0.93f, 0.85f, 1f), isDie = true).apply {
             scale.apply { x = dieScale; y = dieScale; z = dieScale }
             pos.apply { x = clamped.x; y = clamped.y; z = clamped.z }
             eulerRotDeg.assign(Vec3(Random.nextFloat() * 360f, Random.nextFloat() * 360f, Random.nextFloat() * 360f))
@@ -171,7 +233,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     companion object {
-        // Purely a feel tuning knob - see the onSensorChanged doc comment.
-        private const val TILT_SENSITIVITY = 3.5f
+        // Purely feel-tuning knobs - see the handleShakeReading doc comment.
+        private const val SHAKE_DEADZONE = 3.5f // m/s^2
+        private const val SHAKE_SENSITIVITY = 1.2f
     }
 }

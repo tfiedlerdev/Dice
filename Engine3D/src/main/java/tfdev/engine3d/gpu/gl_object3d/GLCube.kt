@@ -9,7 +9,13 @@ import tfdev.engine3d.gpu.physics.BoundingBox
 import tfdev.engine3d.gpu.shader.OpenGLProgram
 import tfdev.engine3d.gpu.shader.Shader
 
-class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec4(1f, 1f, 1f, 1f)) : GLObject3D(color) {
+class GLCube(
+    context: Context,
+    addBoundingBox: Boolean = true,
+    color: Vec4 = Vec4(1f, 1f, 1f, 1f),
+    /** Draws the conventional 1-6 pip pattern per face (opposite faces sum to 7) instead of a plain color. */
+    isDie: Boolean = false
+) : GLObject3D(color) {
 
     private val cubeCoords = floatArrayOf(
         -0.5f, -0.5f, 0.5f, // 0 bottom
@@ -125,6 +131,22 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
         1f, 0f,
         1f, 1f
     )
+    // Per-vertex die face value (1-6, opposite faces sum to 7, as on a conventional die);
+    // all zero - meaning "no pips" - for anything that isn't a die (the floor, walls, ...).
+    // One repeated value per face, in the same bottom/right/back/left/front/top order as
+    // cubeCoords/normalBufferData above.
+    private val faceValueData: FloatArray = if (isDie) {
+        floatArrayOf(
+            6f, 6f, 6f, 6f, 6f, 6f, // bottom
+            3f, 3f, 3f, 3f, 3f, 3f, // right
+            5f, 5f, 5f, 5f, 5f, 5f, // back
+            4f, 4f, 4f, 4f, 4f, 4f, // left
+            2f, 2f, 2f, 2f, 2f, 2f, // front
+            1f, 1f, 1f, 1f, 1f, 1f, // top
+        )
+    } else {
+        FloatArray(36)
+    }
     private val uvData2 = floatArrayOf(
         0f, 1f,        // lbb
         0f, 0f,       // lbf
@@ -146,6 +168,7 @@ class GLCube(context: Context, addBoundingBox: Boolean = true, color: Vec4 = Vec
     //override val drawListLength = drawOrder.size
     override val uvBuffer = floatBufferFromArray(uvData)
     override val normalBuffer = floatBufferFromArray(normalBufferData)
+    override val faceValueBuffer = floatBufferFromArray(faceValueData)
     override val boundingBox = if (addBoundingBox) BoundingBox(this) else null
 
     init {
