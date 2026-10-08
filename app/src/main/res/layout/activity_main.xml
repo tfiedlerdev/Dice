@@ -15,6 +15,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!--
+    Spans the same height as the render view, bottom-right - see RollHistoryOverlay for
+    why (keeps it clear of the status bar entirely, which anchoring it to the top never
+    quite managed). A runtime top padding on the content keeps it resting with only the
+    latest entry plus a sliver of the next-latest shown just above the controls bar by
+    default - the rest of its own height above that is empty space the 3D view shows
+    through, not a smaller fixed-size box. clipToPadding=false so scrolling up through
+    that padding to reveal older entries doesn't hard-clip them at the padding boundary.
+    -->
     <ScrollView
         android:id="@+id/scrollView_rollHistory_activityMain"
         android:layout_width="wrap_content"
@@ -31,7 +40,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="8dp" />
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp" />
     </ScrollView>
 
     <!--
@@ -137,6 +148,12 @@
         </HorizontalScrollView>
     </LinearLayout>
 
+    <!--
+    No padding of its own - the settings-toggle row below deliberately sits flush against
+    this panel's edges so its touch target reaches them (see the row's own comment); the
+    16dp breathing room around everything else lives on the buttons row's own margins
+    instead, rather than padding here that would inflate the whole panel's height.
+    -->
     <LinearLayout
         android:id="@+id/linearLayout_controls_activityMain"
         android:background="#E6212121"
@@ -145,35 +162,45 @@
         app:layout_constraintBottom_toBottomOf="parent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
+        <!-- Flush to this panel's own edges (no margin to cancel) - a bigger touch target. -->
         <LinearLayout
             android:id="@+id/row_settingsToggle_activityMain"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="48dp"
+            android:minHeight="44dp"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:gravity="center"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground">
 
             <TextView
                 android:id="@+id/text_settingsToggle_activityMain"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="18sp"
+                android:textSize="15sp"
                 android:textColor="@color/white"
-                android:text="@string/label_settings_collapsed" />
+                android:text="@string/label_settings" />
+
+            <ImageView
+                android:id="@+id/image_settingsChevron_activityMain"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="4dp"
+                android:src="@drawable/ic_chevron_down"
+                android:importantForAccessibility="no" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="16dp">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp">
 
             <Button
                 android:id="@+id/button_reset_activityMain"

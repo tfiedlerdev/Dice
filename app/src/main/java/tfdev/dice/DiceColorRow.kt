@@ -19,8 +19,8 @@ class DiceColorRow(
                 marginStart = marginPx
                 marginEnd = marginPx
             }
-            setOnClickListener {
-                showDiceColorPicker(context) { pickedColor ->
+            setOnClickListener { clickedSwatch ->
+                showDiceColorPicker(clickedSwatch) { pickedColor ->
                     entry.colorArgb = pickedColor
                     entry.die.setColor(argbToVec4(pickedColor))
                     colorArgb = pickedColor

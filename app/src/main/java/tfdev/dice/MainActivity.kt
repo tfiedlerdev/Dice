@@ -9,12 +9,13 @@ import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.CompoundButton
+import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.Switch
-import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -121,17 +122,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             insets
         }
 
-        // Without this, the overlay's own touch targets sit under the status bar's
-        // touchable strip (even though it's transparent and the content draws behind
-        // it) and taps there never reach the overlay at all.
-        val rollHistoryScrollView = findViewById<View>(R.id.scrollView_rollHistory_activityMain)
-        val rollHistoryBasePadding = rollHistoryScrollView.paddingTop
-        ViewCompat.setOnApplyWindowInsetsListener(rollHistoryScrollView) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updatePadding(top = rollHistoryBasePadding + systemBars.top)
-            insets
-        }
-
         // The room's footprint is sized to match the screen's own aspect ratio (see
         // targetRoomFloorArea/rebuildRoomOnGlThread), so a resize - the settings panel
         // expanding/collapsing, or a rotation - needs the room rebuilt to match it,
@@ -156,13 +146,26 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // Collapsed by default - the shake-sensitivity/tilt controls are tweaked rarely,
         // so they shouldn't compete with Reset/Add Die for space or attention.
         val settingsContent = findViewById<View>(R.id.linearLayout_settingsContent_activityMain)
-        val settingsToggleText = findViewById<TextView>(R.id.text_settingsToggle_activityMain)
+        val settingsChevron = findViewById<ImageView>(R.id.image_settingsChevron_activityMain)
+        fun setSettingsExpanded(expanded: Boolean) {
+            settingsContent.visibility = if (expanded) View.VISIBLE else View.GONE
+            // Chevron points down collapsed ("expand"), up expanded ("collapse") -
+            // rotating the same down-arrow drawable rather than swapping two icons.
+            settingsChevron.animate().rotation(if (expanded) 180f else 0f).setDuration(150L).start()
+        }
         findViewById<View>(R.id.row_settingsToggle_activityMain).setOnClickListener {
-            val expanding = settingsContent.visibility != View.VISIBLE
-            settingsContent.visibility = if (expanding) View.VISIBLE else View.GONE
-            settingsToggleText.setText(
-                if (expanding) R.string.label_settings_expanded else R.string.label_settings_collapsed
-            )
+            setSettingsExpanded(settingsContent.visibility != View.VISIBLE)
+        }
+        // Tapping anywhere else on the 3D view while settings is open collapses it back -
+        // GLRender3DView's own onTouchEvent returns false here (enableYRotation is off),
+        // so a plain OnClickListener would never fire; a touch listener that always
+        // returns false instead just observes the down event and leaves it to propagate
+        // as normal.
+        renderView.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN && settingsContent.visibility == View.VISIBLE) {
+                setSettingsExpanded(false)
+            }
+            false
         }
 
         // Restored from the last session (see AppSettings) rather than always starting
