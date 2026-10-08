@@ -410,7 +410,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         wall(wallThickness, wallLengthZ, wallCenterOffsetX, 0f)  // east
         wall(wallThickness, wallLengthZ, -wallCenterOffsetX, 0f) // west
 
-        renderView.setRoomFootprintHalfExtents(roomHalfExtentX + wallThickness, roomHalfExtentZ + wallThickness)
+        // The bare floor half-extents, not + wallThickness: adding the same flat
+        // constant to both would skew their ratio away from the aspect ratio they
+        // were just computed to match (a fixed offset affects the smaller of two
+        // values proportionally more), which left the renderer's eyeDistanceForX and
+        // eyeDistanceForZ slightly unequal - framing one axis tighter than the other
+        // and leaving the looser axis with visible unused frame (showing as extra
+        // wall) instead of both axes framing the floor equally tightly.
+        renderView.setRoomFootprintHalfExtents(roomHalfExtentX, roomHalfExtentZ)
     }
 
     /** Degrees around the hue wheel the room's surfaces should currently sit at - drifts slowly, full circle every [ROOM_COLOR_CYCLE_MILLIS]. */

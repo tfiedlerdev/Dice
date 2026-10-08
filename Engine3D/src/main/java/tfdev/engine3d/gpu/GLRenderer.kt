@@ -217,10 +217,21 @@ class GLRenderer(
         private const val PHYSICS_SUBSTEPS = 4
         private const val MAX_FRAME_TIME_MILLIS = 100L
 
-        private const val FOV_Y_DEGREES = 90f
+        private const val FOV_Y_DEGREES = 60f
 
-        /** Extra headroom beyond the exact footprint, so the walls aren't right at the frame's edge. */
-        private const val FOOTPRINT_MARGIN = 1.08f
+        /**
+         * Extra headroom beyond the exact footprint, so the floor's own edge isn't
+         * right at the frame's edge. This headroom is exactly what renders as visible
+         * wall around the floor (the camera sits back far enough that the floor edge
+         * clears the frame by this fraction, and that same cleared space is filled by
+         * the wall behind it, not empty space) - so a bigger value directly means more
+         * wall on screen. It can't go too close to 1 though: a leaned camera (see
+         * cappedTiltDirection) shifts the whole view sideways by up to roughly
+         * SAFE_TILT_FRACTION of the room's half-extent, and this same margin is the
+         * only headroom covering that shift - too tight crops dice at the leaned-
+         * toward edge instead of just showing less idle wall.
+         */
+        private const val FOOTPRINT_MARGIN = 1.04f
 
         /**
          * However extreme the aspect ratio (or large the host's room footprint, if it
