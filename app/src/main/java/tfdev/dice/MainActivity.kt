@@ -27,14 +27,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var linearAccelerationSensor: Sensor? = null
 
     private val dice = mutableListOf<GLObject3D>()
+    private val roomPieces = mutableListOf<GLObject3D>()
     private val dieScale = 0.5f
 
     /** Set by the shake-sensitivity slider; see handleShakeReading. */
     private var shakeSensitivity = DEFAULT_SHAKE_SENSITIVITY
 
-    // Half the floor's walkable footprint - used both to build the room and to
-    // keep newly-added dice from spawning inside/outside a wall.
-    private val roomHalfExtent = 2f
+    // Half the floor's walkable footprint - starts small and grows with the number of
+    // dice on the field (see targetRoomHalfExtent/rebuildRoomOnGlThread) rather than
+    // being one size that has to suit anywhere from 2 dice to a dozen. Used both to
+    // build the room and to keep newly-added dice from spawning inside/outside a wall.
+    private var roomHalfExtent = BASE_ROOM_HALF_EXTENT
     private val wallThickness = 0.2f
 
     // The camera (and light) height is computed from the screen's actual aspect ratio
@@ -79,13 +82,26 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 renderView.setCameraTiltEnabled(isChecked)
             }
 
+        findViewById<Switch>(R.id.switch_pointLight_activityMain)
+            .setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+                renderView.scene.setPointLightEnabled(isChecked)
+            }
+        findViewById<Switch>(R.id.switch_secondaryLight_activityMain)
+            .setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+                renderView.scene.setSecondaryLightEnabled(isChecked)
+            }
+        findViewById<Switch>(R.id.switch_secondaryLightFollowsTilt_activityMain)
+            .setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+                renderView.setSecondaryLightFollowsTilt(isChecked)
+            }
+
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
         linearAccelerationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
 
         // This callback is invoked from onSurfaceCreated, i.e. already on the GL thread.
         renderView.setOnSceneInitializedListener { scene ->
-            buildRoom(scene)
+            rebuildRoomOnGlThread(scene, diceCount = 0)
             resetDiceOnGlThread()
         }
     }
@@ -177,7 +193,27 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
-    private fun buildRoom(scene: GLScene) {
+    /** How far out the room should extend to comfortably fit [diceCount] dice. */
+    private fun targetRoomHalfExtent(diceCount: Int): Float {
+        val extraDice = (diceCount.coerceAtLeast(BASE_DICE_COUNT) - BASE_DICE_COUNT)
+        return (BASE_ROOM_HALF_EXTENT + extraDice * ROOM_GROWTH_PER_DIE).coerceAtMost(MAX_ROOM_HALF_EXTENT)
+    }
+
+    /**
+     * Rebuilds the floor/walls/ceiling sized to comfortably fit [diceCount] dice (never
+     * smaller than the base size for [BASE_DICE_COUNT]) and reframes the camera/light to
+     * match - so the field starts small and close, then grows as more dice join it,
+     * rather than being one fixed size that has to suit both 2 dice and a dozen.
+     * Must run on the GL thread (see the queueEvent calls at the call sites).
+     */
+    private fun rebuildRoomOnGlThread(scene: GLScene, diceCount: Int) {
+        for (piece in roomPieces) {
+            scene.removeChild(piece)
+        }
+        roomPieces.clear()
+
+        roomHalfExtent = targetRoomHalfExtent(diceCount)
+
         val floor = GLCube(this, color = Vec4(0.55f, 0.58f, 0.65f, 1f)).apply {
             scale.apply {
                 x = roomHalfExtent * 2f
@@ -189,6 +225,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             setDirty()
         }
         scene.addChild(floor)
+        roomPieces.add(floor)
 
         val ceilingThickness = 0.2f
         val ceiling = GLCube(this, color = Vec4(0.3f, 0.32f, 0.38f, 1f)).apply {
@@ -202,6 +239,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             setDirty()
         }
         scene.addChild(ceiling)
+        roomPieces.add(ceiling)
 
         val wallColor = Vec4(0.35f, 0.38f, 0.45f, 1f)
         val wallCenterOffset = roomHalfExtent + wallThickness / 2f
@@ -210,21 +248,26 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // Walls span the full floor-to-ceiling height, so the room is fully sealed -
         // no amount of bouncing/shaking can throw a die out.
         fun wall(sx: Float, sz: Float, px: Float, pz: Float) {
-            scene.addChild(GLCube(this, color = wallColor).apply {
+            val piece = GLCube(this, color = wallColor).apply {
                 scale.apply { x = sx; y = roomHeight; z = sz }
                 pos.apply { x = px; y = roomHeight / 2f; z = pz }
                 isStatic = true
                 setDirty()
-            })
+            }
+            scene.addChild(piece)
+            roomPieces.add(piece)
         }
         wall(wallLength, wallThickness, 0f, wallCenterOffset)  // north
         wall(wallLength, wallThickness, 0f, -wallCenterOffset) // south
         wall(wallThickness, wallLength, wallCenterOffset, 0f)  // east
         wall(wallThickness, wallLength, -wallCenterOffset, 0f) // west
+
+        renderView.setRoomFootprintHalfExtent(roomHalfExtent + wallThickness)
     }
 
     /**
-     * Clears every die currently on the field and puts a fresh starting pair back.
+     * Clears every die currently on the field, shrinks the room back to its base size,
+     * and puts a fresh starting pair back.
      * Must run on the GL thread (see the queueEvent calls at the call sites).
      */
     private fun resetDiceOnGlThread() {
@@ -233,16 +276,23 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             scene.removeChild(die)
         }
         dice.clear()
+        rebuildRoomOnGlThread(scene, diceCount = 0)
 
-        addDieOnGlThread(Vec3(-0.6f, 1.5f, -0.4f))
-        addDieOnGlThread(Vec3(0.6f, 2f, 0.5f))
+        addDieOnGlThread(Vec3(-0.35f, 1.5f, -0.25f))
+        addDieOnGlThread(Vec3(0.35f, 2f, 0.3f))
     }
 
     /**
-     * Adds one more die, dropped in from above at [position].
+     * Adds one more die, dropped in from above at [position], growing the room first
+     * if this die needs more space than it currently has (see targetRoomHalfExtent).
      * Must run on the GL thread (see the queueEvent calls at the call sites).
      */
     private fun addDieOnGlThread(position: Vec3) {
+        val scene = renderView.scene
+        if (targetRoomHalfExtent(dice.size + 1) != roomHalfExtent) {
+            rebuildRoomOnGlThread(scene, dice.size + 1)
+        }
+
         val margin = wallThickness + dieScale
         val clamped = Vec3(
             position.x.coerceIn(-roomHalfExtent + margin, roomHalfExtent - margin),
@@ -257,7 +307,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             friction = 0.5f
             setDirty()
         }
-        renderView.scene.addChild(die)
+        scene.addChild(die)
         dice.add(die)
     }
 
@@ -274,8 +324,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     companion object {
         // Purely feel-tuning knobs - see the handleShakeReading doc comment.
         private const val SHAKE_DEADZONE = 3.5f // m/s^2
-        private const val MIN_SHAKE_SENSITIVITY = 0.3f
-        private const val MAX_SHAKE_SENSITIVITY = 3f
-        private const val DEFAULT_SHAKE_SENSITIVITY = 1.2f
+        private const val MIN_SHAKE_SENSITIVITY = 1f
+        private const val MAX_SHAKE_SENSITIVITY = 6f
+        private const val DEFAULT_SHAKE_SENSITIVITY = 2.5f
+
+        // Also purely feel-tuning knobs - see targetRoomHalfExtent. The room (and the
+        // camera/light framing it - GLRenderer.recomputeFraming) starts sized for
+        // BASE_DICE_COUNT dice and grows by ROOM_GROWTH_PER_DIE for each one beyond
+        // that, capped at MAX_ROOM_HALF_EXTENT so it can't grow without bound.
+        private const val BASE_DICE_COUNT = 2
+        private const val BASE_ROOM_HALF_EXTENT = 1.2f
+        private const val ROOM_GROWTH_PER_DIE = 0.3f
+        private const val MAX_ROOM_HALF_EXTENT = 3f
     }
 }
