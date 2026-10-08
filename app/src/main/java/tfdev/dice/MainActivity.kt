@@ -444,9 +444,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     companion object {
         // Purely feel-tuning knobs - see the handleShakeReading doc comment.
         private const val SHAKE_DEADZONE = 3.5f // m/s^2
-        private const val MIN_SHAKE_SENSITIVITY = 1f
-        private const val MAX_SHAKE_SENSITIVITY = 6f
-        private const val DEFAULT_SHAKE_SENSITIVITY = 2.5f
+        private const val MIN_SHAKE_SENSITIVITY = 1.5f
+        private const val MAX_SHAKE_SENSITIVITY = 7f
+        private const val DEFAULT_SHAKE_SENSITIVITY = 3.5f
 
         // Also purely feel-tuning knobs - see targetRoomFloorArea. The room (and the
         // camera/light framing it - GLRenderer.recomputeFraming) starts sized for

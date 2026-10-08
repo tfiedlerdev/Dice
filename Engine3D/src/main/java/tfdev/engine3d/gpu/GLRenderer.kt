@@ -56,6 +56,12 @@ class GLRenderer(
     private var viewportAspect = 1f
     private var eyeDistance = MAX_EYE_DISTANCE
 
+    // Recomputed in recomputeFraming from the room's actual current size - see
+    // cappedTiltDirection. The fallback value (pre-first-frame) matches the old
+    // fixed-angle behavior, not that it should ever actually be read that early.
+    private var maxTiltTanX = MAX_TILT_TAN
+    private var maxTiltTanZ = MAX_TILT_TAN
+
     /**
      * World-space "which way is up" direction, as reported by a device's gravity
      * sensor (see the host Activity) - i.e. the *slow* component of how the device
@@ -131,14 +137,28 @@ class GLRenderer(
         camera.setEyeDirection(cappedTiltDirection(), eyeDistance)
     }
 
+    /**
+     * Caps how far the camera can lean per axis - *not* just a single fixed angle,
+     * since with a non-square room (see [setRoomFootprintHalfExtents]) a fixed angle
+     * either wastes most of the narrower axis's headroom or, worse, leans the eye
+     * laterally past that axis's own walls (visibly clipping through them). Each
+     * axis's cap ([maxTiltTanX]/[maxTiltTanZ]) is instead derived in [recomputeFraming]
+     * from that axis's actual room size, so the eye can never lean past
+     * [SAFE_TILT_FRACTION] of the way to the wall, regardless of room shape.
+     */
     private fun cappedTiltDirection(): Vec3 {
-        val horizontalLength = sqrt(
-            smoothedUpDirection.x * smoothedUpDirection.x + smoothedUpDirection.z * smoothedUpDirection.z
-        )
         val verticalComponent = smoothedUpDirection.y.coerceAtLeast(0.3f)
-        val maxHorizontal = MAX_TILT_TAN * verticalComponent
-        return if (horizontalLength > maxHorizontal && horizontalLength > 1e-5f) {
-            val scale = maxHorizontal / horizontalLength
+        val maxHorizontalX = (maxTiltTanX * verticalComponent).coerceAtLeast(1e-5f)
+        val maxHorizontalZ = (maxTiltTanZ * verticalComponent).coerceAtLeast(1e-5f)
+
+        // How far outside the (per-axis-scaled) unit circle the current lean sits -
+        // i.e. an ellipse matching the room's own aspect, not a circle.
+        val normalizedX = smoothedUpDirection.x / maxHorizontalX
+        val normalizedZ = smoothedUpDirection.z / maxHorizontalZ
+        val ellipseDistanceSq = normalizedX * normalizedX + normalizedZ * normalizedZ
+
+        return if (ellipseDistanceSq > 1f) {
+            val scale = 1f / sqrt(ellipseDistanceSq)
             Vec3(smoothedUpDirection.x * scale, verticalComponent, smoothedUpDirection.z * scale)
         } else {
             Vec3(smoothedUpDirection.x, verticalComponent, smoothedUpDirection.z)
@@ -175,6 +195,15 @@ class GLRenderer(
 
         eyeDistance = max(eyeDistanceForX, eyeDistanceForZ).coerceAtMost(MAX_EYE_DISTANCE)
 
+        // tan(leanAngle) * eyeDistance is (approximately) how far the eye moves
+        // laterally per axis when fully tilted; capping that to SAFE_TILT_FRACTION of
+        // the room's own half-extent on that axis keeps the eye from ever leaning far
+        // enough to cross a wall, however extreme the room's aspect ratio is. Also
+        // capped at MAX_TILT_TAN so a generously-sized room doesn't invite an
+        // unnecessarily dramatic lean.
+        maxTiltTanX = (SAFE_TILT_FRACTION * roomFootprintHalfExtentX / eyeDistance).coerceAtMost(MAX_TILT_TAN)
+        maxTiltTanZ = (SAFE_TILT_FRACTION * roomFootprintHalfExtentZ / eyeDistance).coerceAtMost(MAX_TILT_TAN)
+
         camera.setEyeDirection(cappedTiltDirection(), eyeDistance)
         scene.setLightHeight(eyeDistance)
         Matrix4x4.project(projectionMatrix4x4, FOV_Y_DEGREES, viewportAspect, 0.1f, eyeDistance + FAR_PLANE_MARGIN)
@@ -187,7 +216,7 @@ class GLRenderer(
         private const val FOV_Y_DEGREES = 90f
 
         /** Extra headroom beyond the exact footprint, so the walls aren't right at the frame's edge. */
-        private const val FOOTPRINT_MARGIN = 1.15f
+        private const val FOOTPRINT_MARGIN = 1.08f
 
         /**
          * However extreme the aspect ratio (or large the host's room footprint, if it
@@ -201,8 +230,11 @@ class GLRenderer(
         /** Higher = the camera catches up to a changed tilt faster. */
         private const val TILT_EASING_RATE = 3f
 
-        /** tan(22 degrees): the camera can lean this far off straight-down at most, however hard the device is tilted. */
+        /** tan(22 degrees): the camera never leans further than this off straight-down, regardless of room size - see [cappedTiltDirection]. */
         private val MAX_TILT_TAN = tan(Math.toRadians(22.0)).toFloat()
+
+        /** The eye's lean never closes more than this fraction of the gap to a wall - see [cappedTiltDirection]. */
+        private const val SAFE_TILT_FRACTION = 0.8f
 
         private val NEUTRAL_UP_DIRECTION = Vec3(0f, 1f, 0f)
     }
