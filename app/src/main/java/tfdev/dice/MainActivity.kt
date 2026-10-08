@@ -562,29 +562,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
      */
     @VisibleForTesting
     fun seedForScreenshots(dieColors: List<Int>, historyRollColors: List<List<Int>>) {
-        // A random starting spin so the dice land on varied faces instead of all
-        // settling identically - addDieOnGlThread's own "random" eulerRotDeg doesn't
-        // actually do this (that field isn't read by the physics/render rotation,
-        // which is tracked separately as a matrix - a pre-existing quirk, not
-        // something this seeding works around on purpose), but an initial angular
-        // velocity is real physics state and does produce a genuine, varied tumble.
-        fun randomSpin() = Vec3(
-            Random.nextFloat() * 10f - 5f,
-            Random.nextFloat() * 10f - 5f,
-            Random.nextFloat() * 10f - 5f
-        )
         renderView.queueEvent {
             resetDiceOnGlThread() // also spawns the first (default-colored) starting die
             dieColors.firstOrNull()?.let { color ->
                 diceEntries[0].colorArgb = color
                 diceEntries[0].die.setColor(argbToVec4(color))
-                diceEntries[0].die.omega.assign(randomSpin())
             }
             for (color in dieColors.drop(1)) {
                 addDieOnGlThread(randomSpawnPosition())
                 diceEntries[0].colorArgb = color // just-added, newest-first
                 diceEntries[0].die.setColor(argbToVec4(color))
-                diceEntries[0].die.omega.assign(randomSpin())
             }
             runOnUiThread {
                 diceColorRow.rebuild(diceEntries)
