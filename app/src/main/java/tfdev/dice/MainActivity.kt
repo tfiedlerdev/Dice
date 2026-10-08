@@ -9,10 +9,16 @@ import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.Button
 import android.widget.CompoundButton
 import android.widget.SeekBar
 import android.widget.Switch
+import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.gpu.GLRender3DView
@@ -32,6 +38,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private val dice = mutableListOf<GLObject3D>()
     private val roomPieces = mutableListOf<GLObject3D>()
 
+    // Guards the layout-change-triggered rebuild (see onCreate) against firing on the
+    // very first layout pass, before the GL surface/context exists - the initial room
+    // build already happens via setOnSceneInitializedListener below, which is the only
+    // thing allowed to touch GLCube/shaders before this is true.
+    @Volatile private var sceneInitialized = false
+
     /** Each room surface together with the (fixed) saturation/value it keeps while the hue drifts. */
     private data class RoomSurface(val piece: GLObject3D, val saturation: Float, val value: Float)
     private val roomSurfaces = mutableListOf<RoomSurface>()
@@ -49,11 +61,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     /** Set by the shake-sensitivity slider; see handleShakeReading. */
     private var shakeSensitivity = DEFAULT_SHAKE_SENSITIVITY
 
-    // Half the floor's walkable footprint - starts small and grows with the number of
-    // dice on the field (see targetRoomHalfExtent/rebuildRoomOnGlThread) rather than
-    // being one size that has to suit anywhere from 2 dice to a dozen. Used both to
-    // build the room and to keep newly-added dice from spawning inside/outside a wall.
-    private var roomHalfExtent = BASE_ROOM_HALF_EXTENT
+    // Half the floor's walkable footprint along each axis - starts small and grows with
+    // the number of dice on the field (see targetRoomFloorArea/rebuildRoomOnGlThread)
+    // rather than being one size that has to suit anywhere from 2 dice to a dozen, and
+    // isn't necessarily a square: the two are sized to match the screen's own aspect
+    // ratio (see GLRenderer.viewportAspect), so a tall screen gets a room that's
+    // correspondingly longer top-to-bottom than side-to-side. Used both to build the
+    // room and to keep newly-added dice from spawning inside/outside a wall.
+    private var roomHalfExtentX = BASE_ROOM_HALF_EXTENT
+    private var roomHalfExtentZ = BASE_ROOM_HALF_EXTENT
+    private var roomFloorArea = (BASE_ROOM_HALF_EXTENT * 2f) * (BASE_ROOM_HALF_EXTENT * 2f)
     private val wallThickness = 0.2f
 
     // The camera (and light) height is computed from the screen's actual aspect ratio
@@ -64,13 +81,35 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Let the 3D scene draw behind the (transparent) status bar instead of being
+        // pushed down below it - the controls panel below adds its own matching
+        // padding so its buttons/switches don't end up under a system bar instead.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
 
         renderView = findViewById(R.id.renderView_activityMain)
         // The camera looks straight down and never orbits, so dragging on the
         // view has nothing to rotate.
         renderView.enableYRotation = false
-        renderView.setRoomFootprintHalfExtent(roomHalfExtent + wallThickness)
+
+        val controlsPanel = findViewById<View>(R.id.linearLayout_controls_activityMain)
+        val controlsPanelBasePadding = controlsPanel.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(controlsPanel) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(bottom = controlsPanelBasePadding + systemBars.bottom)
+            insets
+        }
+
+        // The room's footprint is sized to match the screen's own aspect ratio (see
+        // targetRoomFloorArea/rebuildRoomOnGlThread), so a resize - the settings panel
+        // expanding/collapsing, or a rotation - needs the room rebuilt to match it,
+        // not just the camera reframed.
+        renderView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            val sizeChanged = right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop
+            if (sceneInitialized && sizeChanged) {
+                renderView.queueEvent { rebuildRoomOnGlThread(renderView.scene, dice.size) }
+            }
+        }
 
         // Button clicks land on the UI thread, but creating a die compiles/links an
         // OpenGL shader program, which - like every GL call - only works on the
@@ -80,6 +119,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
         findViewById<Button>(R.id.button_addDie_activityMain).setOnClickListener {
             renderView.queueEvent { addDieOnGlThread(randomSpawnPosition()) }
+        }
+
+        // Collapsed by default - the shake-sensitivity/tilt controls are tweaked rarely,
+        // so they shouldn't compete with Reset/Add Die for space or attention.
+        val settingsContent = findViewById<View>(R.id.linearLayout_settingsContent_activityMain)
+        val settingsToggleText = findViewById<TextView>(R.id.text_settingsToggle_activityMain)
+        findViewById<View>(R.id.row_settingsToggle_activityMain).setOnClickListener {
+            val expanding = settingsContent.visibility != View.VISIBLE
+            settingsContent.visibility = if (expanding) View.VISIBLE else View.GONE
+            settingsToggleText.setText(
+                if (expanding) R.string.label_settings_expanded else R.string.label_settings_collapsed
+            )
         }
 
         findViewById<SeekBar>(R.id.seekBar_shakeSensitivity_activityMain).apply {
@@ -106,6 +157,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         renderView.setOnSceneInitializedListener { scene ->
             rebuildRoomOnGlThread(scene, diceCount = 0)
             resetDiceOnGlThread()
+            sceneInitialized = true
         }
     }
 
@@ -199,20 +251,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     /**
-     * How far out the room should extend to comfortably fit [diceCount] dice - grows
+     * How large the room's floor should be to comfortably fit [diceCount] dice - grows
      * a "working volume" (floor area times roughly a die's height, not the room's full
      * floor-to-ceiling height) linearly with dice count. Most of the room's actual
      * height is empty air the dice never use, so sizing by the full height made the
      * floor grow far too slowly to keep up with added dice; using the dice's own
      * height instead ties growth to the space they actually occupy.
      */
-    private fun targetRoomHalfExtent(diceCount: Int): Float {
+    private fun targetRoomFloorArea(diceCount: Int): Float {
         val extraDice = (diceCount.coerceAtLeast(BASE_DICE_COUNT) - BASE_DICE_COUNT)
         val baseVolume = (BASE_ROOM_HALF_EXTENT * 2f) * (BASE_ROOM_HALF_EXTENT * 2f) * dieScale
         val maxVolume = (MAX_ROOM_HALF_EXTENT * 2f) * (MAX_ROOM_HALF_EXTENT * 2f) * dieScale
         val volume = (baseVolume + extraDice * ROOM_VOLUME_GROWTH_PER_DIE).coerceAtMost(maxVolume)
-        val area = volume / dieScale
-        return sqrt(area) / 2f
+        return volume / dieScale
     }
 
     /**
@@ -220,6 +271,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
      * smaller than the base size for [BASE_DICE_COUNT]) and reframes the camera/light to
      * match - so the field starts small and close, then grows as more dice join it,
      * rather than being one fixed size that has to suit both 2 dice and a dozen.
+     *
+     * The floor's area comes from [targetRoomFloorArea], but it's split into X/Z half-
+     * extents that match the screen's current aspect ratio rather than always being a
+     * square - `halfExtentX / halfExtentZ == aspect`, so a tall screen gets a room
+     * that's correspondingly longer top-to-bottom, using the screen edge-to-edge
+     * instead of being letterboxed down to its narrower dimension.
+     *
      * Must run on the GL thread (see the queueEvent calls at the call sites).
      */
     private fun rebuildRoomOnGlThread(scene: GLScene, diceCount: Int) {
@@ -229,14 +287,22 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         roomPieces.clear()
         roomSurfaces.clear()
 
-        roomHalfExtent = targetRoomHalfExtent(diceCount)
+        roomFloorArea = targetRoomFloorArea(diceCount)
+        // Read straight from the view's own measured size rather than from the
+        // renderer's GL-thread-updated aspect: that field is only refreshed by
+        // onSurfaceChanged, which can lag a frame or two behind a layout pass (e.g.
+        // the settings panel toggling), momentarily mismatching whatever this method
+        // builds the physical walls with.
+        val aspect = if (renderView.height > 0) renderView.width.toFloat() / renderView.height.toFloat() else 1f
+        roomHalfExtentX = sqrt(roomFloorArea * aspect) / 2f
+        roomHalfExtentZ = sqrt(roomFloorArea / aspect) / 2f
         val hue = currentRoomHueDegrees()
 
         val floor = GLCube(this, color = hsvColor(hue, FLOOR_SATURATION, FLOOR_VALUE)).apply {
             scale.apply {
-                x = roomHalfExtent * 2f
+                x = roomHalfExtentX * 2f
                 y = 0.2f
-                z = roomHalfExtent * 2f
+                z = roomHalfExtentZ * 2f
             }
             pos.y = -0.1f
             isStatic = true
@@ -249,9 +315,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val ceilingThickness = 0.2f
         val ceiling = GLCube(this, color = hsvColor(hue, CEILING_SATURATION, CEILING_VALUE)).apply {
             scale.apply {
-                x = roomHalfExtent * 2f
+                x = roomHalfExtentX * 2f
                 y = ceilingThickness
-                z = roomHalfExtent * 2f
+                z = roomHalfExtentZ * 2f
             }
             pos.y = roomHeight + ceilingThickness / 2f
             isStatic = true
@@ -262,8 +328,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         roomSurfaces.add(RoomSurface(ceiling, CEILING_SATURATION, CEILING_VALUE))
 
         val wallColor = hsvColor(hue, WALL_SATURATION, WALL_VALUE)
-        val wallCenterOffset = roomHalfExtent + wallThickness / 2f
-        val wallLength = roomHalfExtent * 2f + wallThickness * 2f
+        val wallCenterOffsetX = roomHalfExtentX + wallThickness / 2f
+        val wallCenterOffsetZ = roomHalfExtentZ + wallThickness / 2f
+        val wallLengthX = roomHalfExtentX * 2f + wallThickness * 2f
+        val wallLengthZ = roomHalfExtentZ * 2f + wallThickness * 2f
 
         // Walls span the full floor-to-ceiling height, so the room is fully sealed -
         // no amount of bouncing/shaking can throw a die out.
@@ -278,12 +346,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             roomPieces.add(piece)
             roomSurfaces.add(RoomSurface(piece, WALL_SATURATION, WALL_VALUE))
         }
-        wall(wallLength, wallThickness, 0f, wallCenterOffset)  // north
-        wall(wallLength, wallThickness, 0f, -wallCenterOffset) // south
-        wall(wallThickness, wallLength, wallCenterOffset, 0f)  // east
-        wall(wallThickness, wallLength, -wallCenterOffset, 0f) // west
+        wall(wallLengthX, wallThickness, 0f, wallCenterOffsetZ)  // north
+        wall(wallLengthX, wallThickness, 0f, -wallCenterOffsetZ) // south
+        wall(wallThickness, wallLengthZ, wallCenterOffsetX, 0f)  // east
+        wall(wallThickness, wallLengthZ, -wallCenterOffsetX, 0f) // west
 
-        renderView.setRoomFootprintHalfExtent(roomHalfExtent + wallThickness)
+        renderView.setRoomFootprintHalfExtents(roomHalfExtentX + wallThickness, roomHalfExtentZ + wallThickness)
     }
 
     /** Degrees around the hue wheel the room's surfaces should currently sit at - drifts slowly, full circle every [ROOM_COLOR_CYCLE_MILLIS]. */
@@ -335,20 +403,20 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     /**
      * Adds one more die, dropped in from above at [position], growing the room first
-     * if this die needs more space than it currently has (see targetRoomHalfExtent).
+     * if this die needs more space than it currently has (see targetRoomFloorArea).
      * Must run on the GL thread (see the queueEvent calls at the call sites).
      */
     private fun addDieOnGlThread(position: Vec3) {
         val scene = renderView.scene
-        if (targetRoomHalfExtent(dice.size + 1) != roomHalfExtent) {
+        if (targetRoomFloorArea(dice.size + 1) != roomFloorArea) {
             rebuildRoomOnGlThread(scene, dice.size + 1)
         }
 
         val margin = wallThickness + dieScale
         val clamped = Vec3(
-            position.x.coerceIn(-roomHalfExtent + margin, roomHalfExtent - margin),
+            position.x.coerceIn(-roomHalfExtentX + margin, roomHalfExtentX - margin),
             position.y,
-            position.z.coerceIn(-roomHalfExtent + margin, roomHalfExtent - margin)
+            position.z.coerceIn(-roomHalfExtentZ + margin, roomHalfExtentZ - margin)
         )
         val die = GLCube(this, color = Vec4(0.95f, 0.93f, 0.85f, 1f), isDie = true).apply {
             scale.apply { x = dieScale; y = dieScale; z = dieScale }
@@ -364,11 +432,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private fun randomSpawnPosition(): Vec3 {
         val margin = wallThickness + dieScale
-        val range = roomHalfExtent - margin
+        val rangeX = roomHalfExtentX - margin
+        val rangeZ = roomHalfExtentZ - margin
         return Vec3(
-            Random.nextFloat() * 2f * range - range,
+            Random.nextFloat() * 2f * rangeX - rangeX,
             2f,
-            Random.nextFloat() * 2f * range - range
+            Random.nextFloat() * 2f * rangeZ - rangeZ
         )
     }
 
@@ -379,7 +448,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         private const val MAX_SHAKE_SENSITIVITY = 6f
         private const val DEFAULT_SHAKE_SENSITIVITY = 2.5f
 
-        // Also purely feel-tuning knobs - see targetRoomHalfExtent. The room (and the
+        // Also purely feel-tuning knobs - see targetRoomFloorArea. The room (and the
         // camera/light framing it - GLRenderer.recomputeFraming) starts sized for
         // BASE_DICE_COUNT dice and its "working volume" grows by ROOM_VOLUME_GROWTH_PER_DIE
         // for each one beyond that, capped at MAX_ROOM_HALF_EXTENT so it can't grow

@@ -11,7 +11,7 @@ import tfdev.engine3d.gpu.gl_object3d.GLScene
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.exp
-import kotlin.math.min
+import kotlin.math.max
 import kotlin.math.sqrt
 import kotlin.math.tan
 
@@ -37,17 +37,21 @@ class GLRenderer(
     private val projectionMatrix4x4: Matrix4x4 = Matrix4x4()
 
     /**
-     * Half the side length of the square floor the camera should always keep
-     * entirely in view - set this (before the first frame, e.g. right after
-     * constructing the view) to whatever the host's room footprint actually is.
-     * Changing it later re-frames immediately rather than waiting for the surface
-     * to resize again.
+     * Half the X/Z side lengths of the floor the camera should always keep entirely
+     * in view - set these (before the first frame, e.g. right after constructing the
+     * view) to whatever the host's room footprint actually is. Changing them later
+     * re-frames immediately rather than waiting for the surface to resize again. The
+     * two need not be equal - see [setRoomFootprintHalfExtents].
      */
-    var roomFootprintHalfExtent = 2f
-        set(value) {
-            field = value
-            recomputeFraming()
-        }
+    private var roomFootprintHalfExtentX = 2f
+    private var roomFootprintHalfExtentZ = 2f
+
+    /** See [roomFootprintHalfExtentX]/[roomFootprintHalfExtentZ]. */
+    fun setRoomFootprintHalfExtents(halfExtentX: Float, halfExtentZ: Float) {
+        roomFootprintHalfExtentX = halfExtentX
+        roomFootprintHalfExtentZ = halfExtentZ
+        recomputeFraming()
+    }
 
     private var viewportAspect = 1f
     private var eyeDistance = MAX_EYE_DISTANCE
@@ -149,24 +153,27 @@ class GLRenderer(
 
     /**
      * Picks an eye (and light - see [GLScene.setLightHeight]) height such that the
-     * room's square floor footprint always fits on screen, on *any* screen shape.
+     * room's floor footprint always fits on screen, on *any* screen shape.
      *
      * A fixed eye height tuned by eye on one device is exactly as tall as it needs to
      * be for whatever aspect ratio that device happens to have, and too low (cropping
      * the room) on a narrower/taller one: the vertical field of view is a constant
      * ([FOV_Y_DEGREES]), but the *horizontal* one shrinks with the aspect ratio
      * (`tan(fovX/2) = aspect * tan(fovY/2)`) - a tall phone screen sees much less
-     * side-to-side than top-to-bottom at a given height. So the camera has to sit
-     * high enough to satisfy whichever of the two is more restrictive, which on a
-     * typical portrait phone is the horizontal one.
+     * side-to-side than top-to-bottom at a given height. The host is expected to size
+     * [roomFootprintHalfExtentX]/[roomFootprintHalfExtentZ] to match the current
+     * [viewportAspect] (see [setRoomFootprintHalfExtents]), in which case both axes
+     * need the exact same eye distance - the max is taken only as a safety margin for
+     * the brief moments (e.g. mid-rotation) where the host hasn't caught up yet.
      */
     private fun recomputeFraming() {
         val tanHalfFovY = tan(Math.toRadians(FOV_Y_DEGREES / 2.0)).toFloat()
-        val tanHalfFovX = viewportAspect * tanHalfFovY
-        val limitingTanHalfFov = min(tanHalfFovX, tanHalfFovY).coerceAtLeast(0.01f)
+        val tanHalfFovX = (viewportAspect * tanHalfFovY).coerceAtLeast(0.01f)
 
-        eyeDistance = ((roomFootprintHalfExtent * FOOTPRINT_MARGIN) / limitingTanHalfFov)
-            .coerceAtMost(MAX_EYE_DISTANCE)
+        val eyeDistanceForX = (roomFootprintHalfExtentX * FOOTPRINT_MARGIN) / tanHalfFovX
+        val eyeDistanceForZ = (roomFootprintHalfExtentZ * FOOTPRINT_MARGIN) / tanHalfFovY.coerceAtLeast(0.01f)
+
+        eyeDistance = max(eyeDistanceForX, eyeDistanceForZ).coerceAtMost(MAX_EYE_DISTANCE)
 
         camera.setEyeDirection(cappedTiltDirection(), eyeDistance)
         scene.setLightHeight(eyeDistance)

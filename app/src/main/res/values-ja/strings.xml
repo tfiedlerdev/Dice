@@ -1,4 +1,6 @@
 <resources>
+    <string name="label_settings_collapsed">⚙ 設定 ▾</string>
+    <string name="label_settings_expanded">⚙ 設定 ▴</string>
     <string name="label_shake_sensitivity">振動感度</string>
     <string name="label_tilt_camera">デバイスでカメラを傾ける</string>
     <string name="button_reset">リセット</string>

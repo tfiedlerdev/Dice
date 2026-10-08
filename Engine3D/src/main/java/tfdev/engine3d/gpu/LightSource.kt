@@ -10,14 +10,15 @@ import tfdev.engine3d.gpu.gl_object3d.GLObject3D
  * (just a direction - always "infinitely far away", so no position/attenuation) - the
  * point light alone leaves vertical surfaces like walls lit only by ambient light,
  * since they're nearly edge-on to a light directly above; the angled light is what
- * actually shows them. Its direction is diagonal (equal parts each horizontal axis)
- * rather than aligned with either wall axis, so it grazes two adjacent walls instead
- * of picking out just one and leaving the other three uniformly flat.
+ * actually shows them. Its direction is off-diagonal - noticeably closer to one
+ * horizontal axis than the other (roughly 20 degrees of azimuth off one wall's
+ * normal, 70 off the other's) - so the two walls it grazes read as differently lit,
+ * rather than aiming straight at the corner between them and lighting both the same.
  */
 class LightSource(position: Vec3, color: Vec4 = Vec4(1f, 1f, 1f, 1f)) {
     val color = GLObject3D.floatBufferFromArray(color.data())
     val position = GLObject3D.floatBufferFromArray(position.data())
-    val secondaryDirection = GLObject3D.floatBufferFromArray(Vec3(1f, 1f, 1f).normalize().data())
+    val secondaryDirection = GLObject3D.floatBufferFromArray(Vec3(0.2801f, 0.5736f, 0.7698f).normalize().data())
 
     /** Moves the overhead light. Absolute puts leave the buffer's read position untouched, so this is safe to call at any time, including between frames. */
     fun setPosition(newPosition: Vec3) {

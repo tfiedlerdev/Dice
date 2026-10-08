@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Dice</string>
+    <string name="label_settings_collapsed">⚙ Settings ▾</string>
+    <string name="label_settings_expanded">⚙ Settings ▴</string>
     <string name="label_shake_sensitivity">Shake sensitivity</string>
     <string name="label_tilt_camera">Tilt camera with device</string>
     <string name="button_reset">Reset</string>
