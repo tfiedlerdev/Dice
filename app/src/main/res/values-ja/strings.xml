@@ -3,6 +3,10 @@
     <string name="label_settings_expanded">⚙ 設定 ▴</string>
     <string name="label_shake_sensitivity">振動感度</string>
     <string name="label_tilt_camera">デバイスでカメラを傾ける</string>
+    <string name="label_roll_history">ロール履歴</string>
+    <string name="label_dice_colors">サイコロの色</string>
+    <string name="title_pick_die_color">色を選択</string>
+    <string name="title_roll_history">ロール履歴</string>
     <string name="button_reset">リセット</string>
     <string name="button_add_die">サイコロを追加</string>
 </resources>

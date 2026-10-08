@@ -3,6 +3,10 @@
     <string name="label_settings_expanded">⚙ Impostazioni ▴</string>
     <string name="label_shake_sensitivity">Sensibilità di scuotimento</string>
     <string name="label_tilt_camera">Inclina la fotocamera con il dispositivo</string>
+    <string name="label_roll_history">Cronologia dei lanci</string>
+    <string name="label_dice_colors">Colori dei dadi</string>
+    <string name="title_pick_die_color">Scegli un colore</string>
+    <string name="title_roll_history">Cronologia dei lanci</string>
     <string name="button_reset">Reimposta</string>
     <string name="button_add_die">Aggiungi dado</string>
 </resources>

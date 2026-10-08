@@ -79,6 +79,11 @@ class GLRender3DView : GLSurfaceView {
         renderer.tiltEnabled = enabled
     }
 
+    /** See [GLRenderer.onPhysicsStepped]. */
+    fun setOnPhysicsSteppedListener(listener: (() -> Unit)?) {
+        renderer.onPhysicsStepped = listener
+    }
+
     companion object{
     }
 }

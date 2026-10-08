@@ -14,7 +14,7 @@ class GLCube(
     addBoundingBox: Boolean = true,
     color: Vec4 = Vec4(1f, 1f, 1f, 1f),
     /** Draws the conventional 1-6 pip pattern per face (opposite faces sum to 7) instead of a plain color. */
-    isDie: Boolean = false
+    private val isDie: Boolean = false
 ) : GLObject3D(color) {
 
     private val cubeCoords = floatArrayOf(
@@ -171,6 +171,27 @@ class GLCube(
     override val faceValueBuffer = floatBufferFromArray(faceValueData)
     override val boundingBox = if (addBoundingBox) BoundingBox(this) else null
 
+    /**
+     * Which face (1-6) is currently facing up, or null if this isn't a die or it isn't
+     * resting level enough on any single face (e.g. balanced on an edge/corner) - the
+     * face whose local normal, rotated into world space by [R], is closest to world "up"
+     * must be within [uprightCosineThreshold] of exactly vertical (1.0 = exactly vertical).
+     */
+    fun upFaceValueOrNull(uprightCosineThreshold: Float = 0.97f): Int? {
+        if (!isDie) return null
+        var bestValue = 0
+        var bestCosine = -1f
+        for ((localNormal, value) in FACE_NORMAL_TO_VALUE) {
+            val worldNormal = (R * Vec4(localNormal.x, localNormal.y, localNormal.z, 0f)).xyz
+            val cosine = worldNormal.y
+            if (cosine > bestCosine) {
+                bestCosine = cosine
+                bestValue = value
+            }
+        }
+        return if (bestCosine >= uprightCosineThreshold) bestValue else null
+    }
+
     init {
         if (boundingBox != null) {
             if(DEBUG_CORNER_COLLISIONS) {
@@ -239,8 +260,18 @@ class GLCube(
             }
         }
     }
-    companion object{
+    companion object {
         const val DEBUG_CORNER_COLLISIONS = false
         const val DEBUG_EDGE_COLLISIONS = false
+
+        // Local face normal -> conventional die value, matching faceValueData/normalBufferData above.
+        private val FACE_NORMAL_TO_VALUE = listOf(
+            Vec3(0f, 1f, 0f) to 1,
+            Vec3(1f, 0f, 0f) to 3,
+            Vec3(0f, 0f, 1f) to 5,
+            Vec3(-1f, 0f, 0f) to 4,
+            Vec3(0f, 0f, -1f) to 2,
+            Vec3(0f, -1f, 0f) to 6
+        )
     }
 }

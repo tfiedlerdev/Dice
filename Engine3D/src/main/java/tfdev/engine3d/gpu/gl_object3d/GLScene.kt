@@ -80,4 +80,19 @@ class GLScene : GLObject3D() {
         }
         ContactSolver.solve(pairs)
     }
+
+    /**
+     * Whether every non-static (top-level) object - i.e. every die, not the static
+     * floor/walls/ceiling - currently has both linear and angular speed below their
+     * thresholds. Used by the host to detect "the dice have come to a stop" so it can
+     * read off the result; vacuously true if there are no non-static children.
+     */
+    fun allChildrenAtRest(maxLinearSpeed: Float, maxAngularSpeed: Float): Boolean {
+        for (child in children) {
+            if (child.isStatic) continue
+            if (child.velocity.length() > maxLinearSpeed) return false
+            if (child.omega.length() > maxAngularSpeed) return false
+        }
+        return true
+    }
 }

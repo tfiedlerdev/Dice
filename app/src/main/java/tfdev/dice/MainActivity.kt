@@ -34,9 +34,21 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var sensorManager: SensorManager
     private var gravitySensor: Sensor? = null
     private var linearAccelerationSensor: Sensor? = null
+    private lateinit var appSettings: AppSettings
+    private lateinit var diceColorRow: DiceColorRow
+    private lateinit var rollHistoryOverlay: RollHistoryOverlay
 
-    private val dice = mutableListOf<GLObject3D>()
+    // Newest die first - matches the order newly-added dice are shown in the "Dice
+    // colors" settings row. Also the one source of truth for room sizing, spawn
+    // clamping and removal on reset - there's no separate plain list of dice.
+    private val diceEntries = mutableListOf<DieEntry>()
     private val roomPieces = mutableListOf<GLObject3D>()
+
+    private var rollHistoryEnabled = true
+
+    // Rest-detection state for the roll-history capture - see checkRollSettledOnGlThread.
+    private var restSinceMillis = 0L
+    private var pendingRollCapture = true
 
     // Guards the layout-change-triggered rebuild (see onCreate) against firing on the
     // very first layout pass, before the GL surface/context exists - the initial room
@@ -87,16 +99,32 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
 
+        appSettings = AppSettings(this)
+
         renderView = findViewById(R.id.renderView_activityMain)
         // The camera looks straight down and never orbits, so dragging on the
         // view has nothing to rotate.
         renderView.enableYRotation = false
+
+        diceColorRow = DiceColorRow(this, findViewById(R.id.linearLayout_diceColors_activityMain))
+        rollHistoryOverlay = RollHistoryOverlay(this, findViewById(R.id.linearLayout_rollHistory_activityMain))
 
         val controlsPanel = findViewById<View>(R.id.linearLayout_controls_activityMain)
         val controlsPanelBasePadding = controlsPanel.paddingBottom
         ViewCompat.setOnApplyWindowInsetsListener(controlsPanel) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.updatePadding(bottom = controlsPanelBasePadding + systemBars.bottom)
+            insets
+        }
+
+        // Without this, the overlay's own touch targets sit under the status bar's
+        // touchable strip (even though it's transparent and the content draws behind
+        // it) and taps there never reach the overlay at all.
+        val rollHistoryContainer = findViewById<View>(R.id.linearLayout_rollHistory_activityMain)
+        val rollHistoryBasePadding = rollHistoryContainer.paddingTop
+        ViewCompat.setOnApplyWindowInsetsListener(rollHistoryContainer) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(top = rollHistoryBasePadding + systemBars.top)
             insets
         }
 
@@ -107,7 +135,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         renderView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
             val sizeChanged = right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop
             if (sceneInitialized && sizeChanged) {
-                renderView.queueEvent { rebuildRoomOnGlThread(renderView.scene, dice.size) }
+                renderView.queueEvent { rebuildRoomOnGlThread(renderView.scene, diceEntries.size) }
             }
         }
 
@@ -133,21 +161,45 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             )
         }
 
+        // Restored from the last session (see AppSettings) rather than always starting
+        // from the same fixed defaults.
+        shakeSensitivity = appSettings.getShakeSensitivity(DEFAULT_SHAKE_SENSITIVITY)
+        val tiltEnabled = appSettings.getTiltEnabled(true)
+        rollHistoryEnabled = appSettings.getRollHistoryEnabled(true)
+        renderView.setCameraTiltEnabled(tiltEnabled)
+        rollHistoryOverlay.setEnabled(rollHistoryEnabled)
+
         findViewById<SeekBar>(R.id.seekBar_shakeSensitivity_activityMain).apply {
-            progress = sensitivityToProgress(DEFAULT_SHAKE_SENSITIVITY)
+            progress = sensitivityToProgress(shakeSensitivity)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (!fromUser) return
                     shakeSensitivity = progressToSensitivity(progress)
+                    appSettings.setShakeSensitivity(shakeSensitivity)
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {}
             })
         }
 
-        findViewById<Switch>(R.id.switch_cameraTilt_activityMain)
-            .setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+        findViewById<Switch>(R.id.switch_cameraTilt_activityMain).apply {
+            isChecked = tiltEnabled
+            setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
                 renderView.setCameraTiltEnabled(isChecked)
+                appSettings.setTiltEnabled(isChecked)
             }
+        }
+
+        findViewById<Switch>(R.id.switch_rollHistory_activityMain).apply {
+            isChecked = rollHistoryEnabled
+            setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+                rollHistoryEnabled = isChecked
+                rollHistoryOverlay.setEnabled(isChecked)
+                appSettings.setRollHistoryEnabled(isChecked)
+            }
+        }
+
+        renderView.setOnPhysicsSteppedListener { checkRollSettledOnGlThread() }
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
@@ -387,16 +439,23 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     /**
      * Clears every die currently on the field, shrinks the room back to its base size,
-     * and puts a single fresh starting die back.
+     * and puts a single fresh starting die back. Also clears the roll history, since it's
+     * a record of this session's throws and a reset starts a new one.
      * Must run on the GL thread (see the queueEvent calls at the call sites).
      */
     private fun resetDiceOnGlThread() {
         val scene = renderView.scene
-        for (die in dice) {
-            scene.removeChild(die)
+        for (entry in diceEntries) {
+            scene.removeChild(entry.die)
         }
-        dice.clear()
+        diceEntries.clear()
         rebuildRoomOnGlThread(scene, diceCount = 0)
+        restSinceMillis = 0L
+        pendingRollCapture = true
+        runOnUiThread {
+            diceColorRow.rebuild(emptyList())
+            rollHistoryOverlay.clear()
+        }
 
         addDieOnGlThread(Vec3(0f, 1.5f, 0f))
     }
@@ -408,8 +467,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
      */
     private fun addDieOnGlThread(position: Vec3) {
         val scene = renderView.scene
-        if (targetRoomFloorArea(dice.size + 1) != roomFloorArea) {
-            rebuildRoomOnGlThread(scene, dice.size + 1)
+        if (targetRoomFloorArea(diceEntries.size + 1) != roomFloorArea) {
+            rebuildRoomOnGlThread(scene, diceEntries.size + 1)
         }
 
         val margin = wallThickness + dieScale
@@ -418,7 +477,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             position.y,
             position.z.coerceIn(-roomHalfExtentZ + margin, roomHalfExtentZ - margin)
         )
-        val die = GLCube(this, color = Vec4(0.95f, 0.93f, 0.85f, 1f), isDie = true).apply {
+        val defaultColor = Vec4(0.95f, 0.93f, 0.85f, 1f)
+        val die = GLCube(this, color = defaultColor, isDie = true).apply {
             scale.apply { x = dieScale; y = dieScale; z = dieScale }
             pos.apply { x = clamped.x; y = clamped.y; z = clamped.z }
             eulerRotDeg.assign(Vec3(Random.nextFloat() * 360f, Random.nextFloat() * 360f, Random.nextFloat() * 360f))
@@ -427,7 +487,43 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             setDirty()
         }
         scene.addChild(die)
-        dice.add(die)
+        val entry = DieEntry(die, vec4ToArgb(defaultColor))
+        diceEntries.add(0, entry)
+        restSinceMillis = 0L
+        pendingRollCapture = true
+        runOnUiThread { diceColorRow.addDieAtStart(entry) }
+    }
+
+    /**
+     * Polled once per frame (see setOnPhysicsSteppedListener in onCreate): once every die
+     * has been still for [REST_STABLE_MILLIS], reads off each one's face value (or null if
+     * it isn't resting level on a single face) and records it as a roll-history entry.
+     * [pendingRollCapture] makes this fire only once per period of rest, not every frame
+     * while the dice keep sitting still - it's re-armed as soon as anything moves again.
+     * Must run on the GL thread (it's a physics/renderer callback already on it).
+     */
+    private fun checkRollSettledOnGlThread() {
+        if (!rollHistoryEnabled || diceEntries.isEmpty()) {
+            restSinceMillis = 0L
+            pendingRollCapture = true
+            return
+        }
+        val atRest = renderView.scene.allChildrenAtRest(REST_LINEAR_SPEED, REST_ANGULAR_SPEED)
+        if (!atRest) {
+            restSinceMillis = 0L
+            pendingRollCapture = true
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (restSinceMillis == 0L) restSinceMillis = now
+        if (!pendingRollCapture || now - restSinceMillis < REST_STABLE_MILLIS) return
+        pendingRollCapture = false
+
+        val results = diceEntries.map { entry ->
+            DieResult(entry.die.upFaceValueOrNull(), entry.colorArgb)
+        }
+        val entry = RollEntry(now, results)
+        runOnUiThread { rollHistoryOverlay.addEntry(entry) }
     }
 
     private fun randomSpawnPosition(): Vec3 {
@@ -470,5 +566,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         private const val WALL_VALUE = 0.42f
         private const val CEILING_SATURATION = 0.32f
         private const val CEILING_VALUE = 0.32f
+
+        // Roll-history rest detection - see checkRollSettledOnGlThread. Thresholds are
+        // deliberately a bit loose (not exactly zero) since the contact solver leaves a
+        // small amount of residual jitter even once a die has visibly stopped.
+        private const val REST_LINEAR_SPEED = 0.08f // m/s
+        private const val REST_ANGULAR_SPEED = 0.15f // rad/s
+        private const val REST_STABLE_MILLIS = 450L
     }
 }

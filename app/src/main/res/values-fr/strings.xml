@@ -3,6 +3,10 @@
     <string name="label_settings_expanded">⚙ Paramètres ▴</string>
     <string name="label_shake_sensitivity">Sensibilité de secousse</string>
     <string name="label_tilt_camera">Incliner la caméra avec l\'appareil</string>
+    <string name="label_roll_history">Historique des lancers</string>
+    <string name="label_dice_colors">Couleurs des dés</string>
+    <string name="title_pick_die_color">Choisir une couleur</string>
+    <string name="title_roll_history">Historique des lancers</string>
     <string name="button_reset">Réinitialiser</string>
     <string name="button_add_die">Ajouter un dé</string>
 </resources>

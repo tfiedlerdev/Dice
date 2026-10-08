@@ -79,6 +79,9 @@ class GLRenderer(
      */
     var tiltEnabled = true
 
+    /** Invoked once per frame, right after the physics step - e.g. to check whether the dice have come to rest. */
+    var onPhysicsStepped: (() -> Unit)? = null
+
     override fun onSurfaceCreated(unused: GL10, config: EGLConfig) {
         // Set the background frame color
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -107,6 +110,7 @@ class GLRenderer(
             scene.updateSelfAndChild()
             scene.checkCollisions()
         }
+        onPhysicsStepped?.invoke()
 
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
