@@ -10,6 +10,7 @@ import android.widget.Button
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec3
 import sensors_in_paradise.sonar.custom_views.stickman.math.Vec4
 import tfdev.engine3d.gpu.GLRender3DView
+import tfdev.engine3d.gpu.GLRenderer
 import tfdev.engine3d.gpu.gl_object3d.GLCube
 import tfdev.engine3d.gpu.gl_object3d.GLObject3D
 import tfdev.engine3d.gpu.gl_object3d.GLScene
@@ -28,8 +29,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     // Half the floor's walkable footprint - used both to build the room and to
     // keep newly-added dice from spawning inside/outside a wall.
     private val roomHalfExtent = 2f
-    private val roomHeight = 3f
     private val wallThickness = 0.2f
+
+    // The camera (and light) height is computed from the screen's actual aspect ratio
+    // so the room's footprint fits on screen on any device (see GLRenderer -
+    // recomputeFraming), capped at MAX_EYE_DISTANCE - so the ceiling just needs to
+    // clear that cap, not any one particular computed height.
+    private val roomHeight = GLRenderer.MAX_EYE_DISTANCE + 0.5f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +45,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // The camera looks straight down and never orbits, so dragging on the
         // view has nothing to rotate.
         renderView.enableYRotation = false
+        renderView.setRoomFootprintHalfExtent(roomHalfExtent + wallThickness)
 
         // Button clicks land on the UI thread, but creating a die compiles/links an
         // OpenGL shader program, which - like every GL call - only works on the

@@ -11,6 +11,7 @@ import tfdev.engine3d.gpu.gl_object3d.GLScene
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.exp
+import kotlin.math.min
 import kotlin.math.sqrt
 import kotlin.math.tan
 
@@ -29,10 +30,27 @@ class GLRenderer(
     // Looking straight down at the playing field from above, from just below the
     // room's ceiling. `up` can't be the vertical (0,1,0) here - it has to be some
     // direction orthogonal to the (also vertical) view direction, which is what ends
-    // up pointing "towards the top of the screen"; -Z was picked arbitrarily.
+    // up pointing "towards the top of the screen"; -Z was picked arbitrarily. The eye
+    // height itself is computed from the actual screen shape - see recomputeFraming.
     val camera =
-        Camera(center = Vec3(0f, 0f, 0f), eye = Vec3(0f, EYE_DISTANCE, 0f), up = Vec3(0f, 0f, -1f))
+        Camera(center = Vec3(0f, 0f, 0f), eye = Vec3(0f, MAX_EYE_DISTANCE, 0f), up = Vec3(0f, 0f, -1f))
     private val projectionMatrix4x4: Matrix4x4 = Matrix4x4()
+
+    /**
+     * Half the side length of the square floor the camera should always keep
+     * entirely in view - set this (before the first frame, e.g. right after
+     * constructing the view) to whatever the host's room footprint actually is.
+     * Changing it later re-frames immediately rather than waiting for the surface
+     * to resize again.
+     */
+    var roomFootprintHalfExtent = 2f
+        set(value) {
+            field = value
+            recomputeFraming()
+        }
+
+    private var viewportAspect = 1f
+    private var eyeDistance = MAX_EYE_DISTANCE
 
     /**
      * World-space "which way is up" direction, as reported by a device's gravity
@@ -97,33 +115,71 @@ class GLRenderer(
         smoothedUpDirection.y += (gravityUpDirection.y - smoothedUpDirection.y) * t
         smoothedUpDirection.z += (gravityUpDirection.z - smoothedUpDirection.z) * t
 
+        camera.setEyeDirection(cappedTiltDirection(), eyeDistance)
+    }
+
+    private fun cappedTiltDirection(): Vec3 {
         val horizontalLength = sqrt(
             smoothedUpDirection.x * smoothedUpDirection.x + smoothedUpDirection.z * smoothedUpDirection.z
         )
         val verticalComponent = smoothedUpDirection.y.coerceAtLeast(0.3f)
         val maxHorizontal = MAX_TILT_TAN * verticalComponent
-        val direction = if (horizontalLength > maxHorizontal && horizontalLength > 1e-5f) {
+        return if (horizontalLength > maxHorizontal && horizontalLength > 1e-5f) {
             val scale = maxHorizontal / horizontalLength
             Vec3(smoothedUpDirection.x * scale, verticalComponent, smoothedUpDirection.z * scale)
         } else {
             Vec3(smoothedUpDirection.x, verticalComponent, smoothedUpDirection.z)
         }
-        camera.setEyeDirection(direction, EYE_DISTANCE)
     }
 
     override fun onSurfaceChanged(unused: GL10, width: Int, height: Int) {
         glViewport(0, 0, width, height)
-        val ratio: Float = width.toFloat() / height.toFloat()
+        viewportAspect = width.toFloat() / height.toFloat()
+        recomputeFraming()
+    }
 
-        Matrix4x4.project(projectionMatrix4x4, 90f, ratio, 0.1f, 10f)
+    /**
+     * Picks an eye (and light - see [GLScene.setLightHeight]) height such that the
+     * room's square floor footprint always fits on screen, on *any* screen shape.
+     *
+     * A fixed eye height tuned by eye on one device is exactly as tall as it needs to
+     * be for whatever aspect ratio that device happens to have, and too low (cropping
+     * the room) on a narrower/taller one: the vertical field of view is a constant
+     * ([FOV_Y_DEGREES]), but the *horizontal* one shrinks with the aspect ratio
+     * (`tan(fovX/2) = aspect * tan(fovY/2)`) - a tall phone screen sees much less
+     * side-to-side than top-to-bottom at a given height. So the camera has to sit
+     * high enough to satisfy whichever of the two is more restrictive, which on a
+     * typical portrait phone is the horizontal one.
+     */
+    private fun recomputeFraming() {
+        val tanHalfFovY = tan(Math.toRadians(FOV_Y_DEGREES / 2.0)).toFloat()
+        val tanHalfFovX = viewportAspect * tanHalfFovY
+        val limitingTanHalfFov = min(tanHalfFovX, tanHalfFovY).coerceAtLeast(0.01f)
+
+        eyeDistance = ((roomFootprintHalfExtent * FOOTPRINT_MARGIN) / limitingTanHalfFov)
+            .coerceAtMost(MAX_EYE_DISTANCE)
+
+        camera.setEyeDirection(cappedTiltDirection(), eyeDistance)
+        scene.setLightHeight(eyeDistance)
+        Matrix4x4.project(projectionMatrix4x4, FOV_Y_DEGREES, viewportAspect, 0.1f, eyeDistance + FAR_PLANE_MARGIN)
     }
 
     companion object {
         private const val PHYSICS_SUBSTEPS = 4
         private const val MAX_FRAME_TIME_MILLIS = 100L
 
-        /** How far below the room's ceiling the camera (and the light) sit. */
-        const val EYE_DISTANCE = 2.65f
+        private const val FOV_Y_DEGREES = 90f
+
+        /** Extra headroom beyond the exact footprint, so the walls aren't right at the frame's edge. */
+        private const val FOOTPRINT_MARGIN = 1.15f
+
+        /**
+         * However extreme the aspect ratio, the eye (and the room's ceiling, which the
+         * host must keep above this) never need to exceed this.
+         */
+        const val MAX_EYE_DISTANCE = 6f
+
+        private const val FAR_PLANE_MARGIN = 2f
 
         /** Higher = the camera catches up to a changed tilt faster. */
         private const val TILT_EASING_RATE = 3f

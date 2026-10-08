@@ -13,9 +13,18 @@ class GLScene : GLObject3D() {
         get() = null
     override val vertexCount: Int
         get() = 0
-    // Positioned to sit just below a ceiling, centered over the playing field, looking
-    // straight down - matches the room MainActivity builds (see its roomHeight).
-    override val lightSource = LightSource(Vec3(0f, 2.7f, 0f), Vec4(1f, 1f, 1f, 1f))
+    // Centered directly over the playing field, looking straight down; see
+    // setLightHeight for how high up - GLRenderer keeps it in step with the camera,
+    // both sitting just below the room's ceiling.
+    override val lightSource = LightSource(Vec3(0f, 1f, 0f), Vec4(1f, 1f, 1f, 1f))
+
+    /**
+     * Moves the (centered, downward-looking) light straight up/down - GLRenderer
+     * calls this to keep it in step with the camera, both just below the ceiling.
+     */
+    fun setLightHeight(y: Float) {
+        lightSource.setPosition(Vec3(0f, y, 0f))
+    }
 
     init {
         // The scene root is a container, not a physics body - without this it would

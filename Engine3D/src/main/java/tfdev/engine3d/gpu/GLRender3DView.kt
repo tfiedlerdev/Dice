@@ -69,6 +69,11 @@ class GLRender3DView : GLSurfaceView {
         renderer.gravityUpDirection = direction
     }
 
+    /** See [GLRenderer.roomFootprintHalfExtent]. */
+    fun setRoomFootprintHalfExtent(halfExtent: Float) {
+        renderer.roomFootprintHalfExtent = halfExtent
+    }
+
     companion object{
     }
 }
