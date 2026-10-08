@@ -35,7 +35,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Shake sensitivity" />
+                android:text="@string/label_shake_sensitivity" />
 
             <SeekBar
                 android:id="@+id/seekBar_shakeSensitivity_activityMain"
@@ -57,7 +57,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Tilt camera with device" />
+                android:text="@string/label_tilt_camera" />
 
             <Switch
                 android:id="@+id/switch_cameraTilt_activityMain"
@@ -78,7 +78,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                android:text="Reset" />
+                android:text="@string/button_reset" />
 
             <Button
                 android:id="@+id/button_addDie_activityMain"
@@ -86,7 +86,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:text="Add Die" />
+                android:text="@string/button_add_die" />
         </LinearLayout>
     </LinearLayout>
 

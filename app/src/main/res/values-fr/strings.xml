@@ -1,0 +1,6 @@
+<resources>
+    <string name="label_shake_sensitivity">Sensibilité de secousse</string>
+    <string name="label_tilt_camera">Incliner la caméra avec l\'appareil</string>
+    <string name="button_reset">Réinitialiser</string>
+    <string name="button_add_die">Ajouter un dé</string>
+</resources>

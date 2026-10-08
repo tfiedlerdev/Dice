@@ -1,0 +1,6 @@
+<resources>
+    <string name="label_shake_sensitivity">Sensibilidad de sacudida</string>
+    <string name="label_tilt_camera">Inclinar cámara con el dispositivo</string>
+    <string name="button_reset">Reiniciar</string>
+    <string name="button_add_die">Añadir dado</string>
+</resources>
