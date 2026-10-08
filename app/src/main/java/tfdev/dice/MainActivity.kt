@@ -267,7 +267,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     /**
      * Clears every die currently on the field, shrinks the room back to its base size,
-     * and puts a fresh starting pair back.
+     * and puts a single fresh starting die back.
      * Must run on the GL thread (see the queueEvent calls at the call sites).
      */
     private fun resetDiceOnGlThread() {
@@ -278,8 +278,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         dice.clear()
         rebuildRoomOnGlThread(scene, diceCount = 0)
 
-        addDieOnGlThread(Vec3(-0.35f, 1.5f, -0.25f))
-        addDieOnGlThread(Vec3(0.35f, 2f, 0.3f))
+        addDieOnGlThread(Vec3(0f, 1.5f, 0f))
     }
 
     /**
@@ -332,7 +331,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // camera/light framing it - GLRenderer.recomputeFraming) starts sized for
         // BASE_DICE_COUNT dice and grows by ROOM_GROWTH_PER_DIE for each one beyond
         // that, capped at MAX_ROOM_HALF_EXTENT so it can't grow without bound.
-        private const val BASE_DICE_COUNT = 2
+        private const val BASE_DICE_COUNT = 1
         private const val BASE_ROOM_HALF_EXTENT = 1.2f
         private const val ROOM_GROWTH_PER_DIE = 0.3f
         private const val MAX_ROOM_HALF_EXTENT = 3f

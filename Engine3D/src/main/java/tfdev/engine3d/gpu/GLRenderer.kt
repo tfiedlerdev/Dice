@@ -143,14 +143,20 @@ class GLRenderer(
     }
 
     /**
-     * Re-derives the angled light's azimuth from whichever source [secondaryLightFollowsTilt]
-     * selects, combines it with a fixed elevation, and pushes the result to the scene.
+     * Re-derives the angled light's azimuth from [gravityUpDirection] when
+     * [secondaryLightFollowsTilt] is on, combines it with a fixed elevation, and
+     * pushes the result to the scene. When off, the azimuth is simply left wherever
+     * it last was - i.e. anchored to the room rather than the device - which is also
+     * why this can't instead read the camera's own (tilt-driven) direction: with no
+     * orbit control in this app, the camera's direction *is* just the device tilt, so
+     * doing that would make "off" behave identically to "on".
      */
     private fun updateSecondaryLightDirection() {
-        val source = if (secondaryLightFollowsTilt) gravityUpDirection else cappedTiltDirection()
-        val horizontalLengthSq = source.x * source.x + source.z * source.z
-        if (horizontalLengthSq > AZIMUTH_DEADZONE_SQ) {
-            lastSecondaryLightAzimuth = atan2(source.x, source.z)
+        if (secondaryLightFollowsTilt) {
+            val horizontalLengthSq = gravityUpDirection.x * gravityUpDirection.x + gravityUpDirection.z * gravityUpDirection.z
+            if (horizontalLengthSq > AZIMUTH_DEADZONE_SQ) {
+                lastSecondaryLightAzimuth = atan2(gravityUpDirection.x, gravityUpDirection.z)
+            }
         }
 
         val elevationRad = Math.toRadians(SECONDARY_LIGHT_ELEVATION_DEGREES.toDouble()).toFloat()
