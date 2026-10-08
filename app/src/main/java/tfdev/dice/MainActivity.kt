@@ -98,11 +98,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 renderView.setCameraTiltEnabled(isChecked)
             }
 
-        findViewById<Switch>(R.id.switch_pointLight_activityMain)
-            .setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
-                renderView.scene.setPointLightEnabled(isChecked)
-            }
-
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
         linearAccelerationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
@@ -205,17 +200,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     /**
      * How far out the room should extend to comfortably fit [diceCount] dice - grows
-     * the room's *volume* (floor area times its fixed height) linearly with dice count,
-     * rather than its floor area directly. Since the room is quite tall, a given volume
-     * increase corresponds to a much smaller area (and half-extent) increase, so this
-     * reads as noticeably gentler growth than scaling the area itself would.
+     * a "working volume" (floor area times roughly a die's height, not the room's full
+     * floor-to-ceiling height) linearly with dice count. Most of the room's actual
+     * height is empty air the dice never use, so sizing by the full height made the
+     * floor grow far too slowly to keep up with added dice; using the dice's own
+     * height instead ties growth to the space they actually occupy.
      */
     private fun targetRoomHalfExtent(diceCount: Int): Float {
         val extraDice = (diceCount.coerceAtLeast(BASE_DICE_COUNT) - BASE_DICE_COUNT)
-        val baseVolume = (BASE_ROOM_HALF_EXTENT * 2f) * (BASE_ROOM_HALF_EXTENT * 2f) * roomHeight
-        val maxVolume = (MAX_ROOM_HALF_EXTENT * 2f) * (MAX_ROOM_HALF_EXTENT * 2f) * roomHeight
+        val baseVolume = (BASE_ROOM_HALF_EXTENT * 2f) * (BASE_ROOM_HALF_EXTENT * 2f) * dieScale
+        val maxVolume = (MAX_ROOM_HALF_EXTENT * 2f) * (MAX_ROOM_HALF_EXTENT * 2f) * dieScale
         val volume = (baseVolume + extraDice * ROOM_VOLUME_GROWTH_PER_DIE).coerceAtMost(maxVolume)
-        val area = volume / roomHeight
+        val area = volume / dieScale
         return sqrt(area) / 2f
     }
 
@@ -385,12 +381,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         // Also purely feel-tuning knobs - see targetRoomHalfExtent. The room (and the
         // camera/light framing it - GLRenderer.recomputeFraming) starts sized for
-        // BASE_DICE_COUNT dice and its *volume* grows by ROOM_VOLUME_GROWTH_PER_DIE
+        // BASE_DICE_COUNT dice and its "working volume" grows by ROOM_VOLUME_GROWTH_PER_DIE
         // for each one beyond that, capped at MAX_ROOM_HALF_EXTENT so it can't grow
         // without bound.
         private const val BASE_DICE_COUNT = 1
         private const val BASE_ROOM_HALF_EXTENT = 1.2f
-        private const val ROOM_VOLUME_GROWTH_PER_DIE = 5f
+        private const val ROOM_VOLUME_GROWTH_PER_DIE = 1.5f
         private const val MAX_ROOM_HALF_EXTENT = 3f
 
         // The room's ambient color: hue drifts slowly through the full color wheel

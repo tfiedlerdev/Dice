@@ -26,11 +26,6 @@ class GLScene : GLObject3D() {
         lightSource.setPosition(Vec3(0f, y, 0f))
     }
 
-    /** Switches the straight-down overhead light on/off. */
-    fun setPointLightEnabled(enabled: Boolean) {
-        lightSource.pointLightEnabled = enabled
-    }
-
     init {
         // The scene root is a container, not a physics body - without this it would
         // silently free-fall under its own default gravity, dragging every child's

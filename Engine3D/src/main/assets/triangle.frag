@@ -10,7 +10,6 @@ in vec4 positionWorldSpace;
 uniform vec4 uLightColor;
 uniform vec3 uLightPosition;
 uniform vec3 uSecondaryLightDirection;
-uniform float uPointLightEnabled;
 float uLightPower = 0.85;
 // Directional (not positional) lights don't attenuate with distance the way the point
 // light above does, so this is tuned down on its own to compensate.
@@ -70,7 +69,7 @@ void main() {
     // Gentle falloff - the room is small, so this mostly keeps corners from
     // reading as dramatically darker than directly under the light.
     float attenuation = 1. / (1. + 0.1 * distance + 0.02 * distance * distance);
-    float pointLightAmount = uPointLightEnabled * uLightPower * cosTheta * attenuation;
+    float pointLightAmount = uLightPower * cosTheta * attenuation;
 
     // The overhead point light is nearly edge-on to a vertical wall, so on its own
     // walls would only ever show their flat ambient color - this angled, un-attenuated
