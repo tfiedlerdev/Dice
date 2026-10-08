@@ -41,6 +41,10 @@ dependencies {
     implementation project(path: ':Engine3D')
 
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    // Bumped from 1.1.3/3.4.0: those versions' own registerReceiver calls (inside
+    // ActivityScenario's result-waiting receiver) don't pass RECEIVER_EXPORTED/
+    // RECEIVER_NOT_EXPORTED, which targeting API 33+ requires - a SecurityException on
+    // every ActivityScenario.launch() once targetSdk went to 36.
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }

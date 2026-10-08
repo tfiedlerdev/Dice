@@ -16,6 +16,7 @@ import android.widget.CompoundButton
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.Switch
+import androidx.annotation.VisibleForTesting
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -551,7 +552,59 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         )
     }
 
+    /**
+     * Dev-only seeding hook for ScreenshotSetupTest (see its doc) - never called from
+     * production code. Clears the field and drops one die per color in [dieColors] (so
+     * the per-die color feature is obvious at a glance), then backfills
+     * [historyRollColors] worth of roll-history entries (oldest first) directly, rather
+     * than waiting on real physics to settle enough actual rolls to fill out the feed's
+     * "peek the next one" default view.
+     */
+    @VisibleForTesting
+    fun seedForScreenshots(dieColors: List<Int>, historyRollColors: List<List<Int>>) {
+        // A random starting spin so the dice land on varied faces instead of all
+        // settling identically - addDieOnGlThread's own "random" eulerRotDeg doesn't
+        // actually do this (that field isn't read by the physics/render rotation,
+        // which is tracked separately as a matrix - a pre-existing quirk, not
+        // something this seeding works around on purpose), but an initial angular
+        // velocity is real physics state and does produce a genuine, varied tumble.
+        fun randomSpin() = Vec3(
+            Random.nextFloat() * 10f - 5f,
+            Random.nextFloat() * 10f - 5f,
+            Random.nextFloat() * 10f - 5f
+        )
+        renderView.queueEvent {
+            resetDiceOnGlThread() // also spawns the first (default-colored) starting die
+            dieColors.firstOrNull()?.let { color ->
+                diceEntries[0].colorArgb = color
+                diceEntries[0].die.setColor(argbToVec4(color))
+                diceEntries[0].die.omega.assign(randomSpin())
+            }
+            for (color in dieColors.drop(1)) {
+                addDieOnGlThread(randomSpawnPosition())
+                diceEntries[0].colorArgb = color // just-added, newest-first
+                diceEntries[0].die.setColor(argbToVec4(color))
+                diceEntries[0].die.omega.assign(randomSpin())
+            }
+            runOnUiThread {
+                diceColorRow.rebuild(diceEntries)
+                rollHistoryOverlay.clear()
+                var timestamp = System.currentTimeMillis() - historyRollColors.size * 60_000L
+                for (rollColors in historyRollColors) {
+                    val results = rollColors.mapIndexed { index, color ->
+                        DieResult(SCREENSHOT_FACE_VALUES[index % SCREENSHOT_FACE_VALUES.size], color)
+                    }
+                    rollHistoryOverlay.addEntry(RollEntry(timestamp, results))
+                    timestamp += 60_000L
+                }
+            }
+        }
+    }
+
     companion object {
+        /** Cycled through for [seedForScreenshots]' seeded history rows - just visual variety. */
+        private val SCREENSHOT_FACE_VALUES = listOf(6, 3, 1, 4, 2, 5)
+
         // Purely feel-tuning knobs - see the handleShakeReading doc comment.
         private const val SHAKE_DEADZONE = 3.5f // m/s^2
         private const val MIN_SHAKE_SENSITIVITY = 1.5f
