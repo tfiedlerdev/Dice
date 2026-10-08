@@ -1,6 +1,9 @@
 package tfdev.dice
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -12,8 +15,10 @@ import android.widget.ScrollView
  * scrollable list rather than a separate "compact feed" that has to be tapped open into
  * a full view - the whole session is already right there, just scroll. Normally
  * auto-scrolled to the bottom so a new result is always revealed as it comes in (older
- * ones correspondingly scroll up out of view - no separate fade-out timer needed), but a
- * manual drag suspends that until the user scrolls back down to the bottom themselves.
+ * ones correspondingly scroll up out of view). A manual drag suspends that until either
+ * the user scrolls back down to the bottom themselves, or - if they just leave it
+ * scrolled away - [RETURN_TO_BOTTOM_DELAY_MILLIS] of inactivity passes and it springs
+ * back on its own, so the feed never permanently gets stuck showing stale history.
  */
 class RollHistoryOverlay(
     private val context: Context,
@@ -21,19 +26,33 @@ class RollHistoryOverlay(
     private val container: LinearLayout
 ) {
     private var autoScrollToBottom = true
+    private val returnToBottomHandler = Handler(Looper.getMainLooper())
+    private val returnToBottomRunnable = Runnable {
+        autoScrollToBottom = true
+        scrollView.smoothScrollTo(0, maxScrollY())
+    }
 
     init {
         // Returning false leaves the touch free for the ScrollView's own handling - this
         // is just to notice "the user is dragging" and suspend auto-scroll while they are.
         scrollView.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_DOWN) {
-                autoScrollToBottom = false
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    autoScrollToBottom = false
+                    returnToBottomHandler.removeCallbacks(returnToBottomRunnable)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (!autoScrollToBottom) {
+                        returnToBottomHandler.postDelayed(returnToBottomRunnable, RETURN_TO_BOTTOM_DELAY_MILLIS)
+                    }
+                }
             }
             false
         }
         scrollView.viewTreeObserver.addOnScrollChangedListener {
             if (scrollView.scrollY >= maxScrollY()) {
                 autoScrollToBottom = true
+                returnToBottomHandler.removeCallbacks(returnToBottomRunnable)
             }
         }
     }
@@ -62,6 +81,7 @@ class RollHistoryOverlay(
     fun clear() {
         container.removeAllViews()
         autoScrollToBottom = true
+        returnToBottomHandler.removeCallbacks(returnToBottomRunnable)
     }
 
     fun setEnabled(enabled: Boolean) {
@@ -74,8 +94,13 @@ class RollHistoryOverlay(
         val marginPx = (3 * density).toInt()
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
+            // Match the content column's own (widest-row-driven) width and pack this
+            // row's dice against its end - otherwise a row with fewer dice than the
+            // widest one just sits at the start, off-center from the screen edge the
+            // rest of the feed hugs.
+            gravity = Gravity.END
             layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = marginPx * 2 }
             for (result in entry.dieResults) {
@@ -91,5 +116,6 @@ class RollHistoryOverlay(
     companion object {
         private const val TILE_SIZE_DP = 36
         private const val ENTRY_ANIMATION_MILLIS = 250L
+        private const val RETURN_TO_BOTTOM_DELAY_MILLIS = 10_000L
     }
 }

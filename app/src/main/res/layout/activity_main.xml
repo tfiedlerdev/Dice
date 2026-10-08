@@ -21,6 +21,7 @@
         android:layout_height="0dp"
         android:scrollbars="none"
         android:fillViewport="false"
+        android:clipToPadding="false"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/linearLayout_controls_activityMain"
         app:layout_constraintEnd_toEndOf="parent">
