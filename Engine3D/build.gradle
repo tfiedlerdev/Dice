@@ -8,7 +8,8 @@ android {
     compileSdk 36
 
     defaultConfig {
-        minSdk 21
+        // See app/build.gradle's comment on this same bump (Play Protect requirement).
+        minSdk 24
         targetSdk 36
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

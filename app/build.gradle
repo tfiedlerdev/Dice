@@ -9,7 +9,9 @@ android {
 
     defaultConfig {
         applicationId "tfdev.dice"
-        minSdk 21
+        // Play Protect's automatic (on-device) scanning requires at least 24 - a lower
+        // minSdk still builds and installs fine, but Play Console rejects the upload.
+        minSdk 24
         targetSdk 36
         versionCode 1
         versionName "1.0"
