@@ -27,7 +27,7 @@ keystore.txt
 app/release/
 
 # fastlane (see fastlane/README.md) - the service account key is a secret, never commit it
-fastlane/play-store-credentials.json
+service-account.json
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png

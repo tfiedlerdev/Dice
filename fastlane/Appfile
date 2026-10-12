@@ -1,2 +1,2 @@
-json_key_file("fastlane/play-store-credentials.json") # see fastlane/README.md
+json_key_file("service-account.json") # see fastlane/README.md
 package_name("tfdev.dice")

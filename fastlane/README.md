@@ -30,7 +30,7 @@ command - no manual copy-pasting into the web UI.
      permissions just to update text, screenshots, and graphics.
    - Save the downloaded JSON file as:
      ```
-     /Users/tobi/Workspaces/AndroidStudioProjects/Dice/fastlane/play-store-credentials.json
+     /Users/tobi/Workspaces/AndroidStudioProjects/Dice/service-account.json
      ```
      (already in `.gitignore` - never commit this file, it's equivalent to a password.)
 
