@@ -1,0 +1,16 @@
+Dice Sim 3D turns your phone into a box of real, physically simulated dice - no fake random-number generator, just an actual 3D physics engine bouncing, tumbling, and settling dice the way they do on a real table.
+
+FEATURES
+
+• Real physics, not random numbers - every die tumbles, bounces off walls, and collides with the other dice using a 3D physics engine built from scratch.
+• Shake to roll - shake your phone to send the dice tumbling, just like a real dice cup.
+• Tilt the table - tilt your device to lean the camera and look at the dice from a different angle.
+• Pick a color for every die - tap any die to open a color picker and give it its own color.
+• Roll history - every roll is recorded in a scrollable feed, so you never lose track of what you rolled.
+• Add as many dice as you want - the room automatically grows to fit them all.
+• Ambient room color - the room's walls slowly drift through a gentle color cycle.
+• Fully offline - no account, no ads, no internet connection required or used. Ever.
+
+Whether you need a quick dice roll for a tabletop game, want to demonstrate probability, or just enjoy watching physics-accurate dice tumble, Dice Sim 3D is built to feel like the real thing.
+
+No internet permission. No ads. No tracking. Just dice.

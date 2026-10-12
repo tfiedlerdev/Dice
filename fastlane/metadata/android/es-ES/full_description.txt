@@ -1,0 +1,16 @@
+Dice Sim 3D convierte tu teléfono en una caja de dados reales y simulados físicamente: nada de un generador de números aleatorios, sino un auténtico motor de física 3D que hace botar, dar tumbos y detenerse a los dados igual que sobre una mesa real.
+
+CARACTERÍSTICAS
+
+• Física real, no números aleatorios - cada dado da tumbos, rebota en las paredes y choca con los demás gracias a un motor de física 3D creado desde cero.
+• Agita para tirar - agita tu teléfono para que los dados den tumbos, igual que en un cubilete real.
+• Inclina la mesa - inclina tu dispositivo para inclinar la cámara y ver los dados desde otro ángulo.
+• Elige un color para cada dado - toca cualquier dado para abrir un selector de color y darle su propio color.
+• Historial de tiradas - cada tirada queda registrada en una lista desplazable, para que nunca pierdas de vista lo que sacaste.
+• Añade tantos dados como quieras - la sala crece automáticamente para que todos quepan.
+• Color ambiental de la sala - las paredes de la sala van cambiando lentamente a través de un suave ciclo de colores.
+• Totalmente sin conexión - sin cuenta, sin anuncios, sin necesidad ni uso de conexión a internet. Nunca.
+
+Ya sea que necesites una tirada rápida para un juego de mesa, quieras explicar la probabilidad o simplemente disfrutes viendo dados físicamente realistas dar tumbos, Dice Sim 3D está hecho para sentirse como el objeto real.
+
+Sin permiso de internet. Sin anuncios. Sin rastreo. Solo dados.

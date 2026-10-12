@@ -1,0 +1,1 @@
+Dados 3D con física real: agita para tirar, inclina la cámara, elige colores.

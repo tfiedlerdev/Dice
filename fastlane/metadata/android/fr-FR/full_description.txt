@@ -1,0 +1,16 @@
+Dice Sim 3D transforme votre téléphone en une boîte de dés réels, simulés physiquement - pas de générateur de nombres aléatoires factice, mais un véritable moteur physique 3D qui fait rebondir, rouler et se stabiliser les dés comme sur une vraie table.
+
+FONCTIONNALITÉS
+
+• Une vraie physique, pas des nombres aléatoires - chaque dé roule, rebondit sur les murs et entre en collision avec les autres dés grâce à un moteur physique 3D entièrement maison.
+• Secouez pour lancer - secouez votre téléphone pour faire rouler les dés, exactement comme avec un vrai gobelet à dés.
+• Inclinez la table - inclinez votre appareil pour pencher la caméra et observer les dés sous un autre angle.
+• Choisissez une couleur pour chaque dé - touchez un dé pour ouvrir un sélecteur de couleur et lui donner sa propre couleur.
+• Historique des lancers - chaque lancer est enregistré dans une liste déroulante, pour ne jamais perdre le fil de vos résultats.
+• Ajoutez autant de dés que vous voulez - la pièce s'agrandit automatiquement pour tous les accueillir.
+• Couleur d'ambiance - les murs de la pièce dérivent lentement à travers un doux cycle de couleurs.
+• Entièrement hors ligne - pas de compte, pas de publicité, aucune connexion internet requise ni utilisée. Jamais.
+
+Que vous ayez besoin d'un lancer rapide pour un jeu de société, que vous vouliez illustrer les probabilités, ou que vous aimiez simplement regarder des dés à la physique réaliste rouler, Dice Sim 3D est conçu pour donner l'impression du vrai.
+
+Aucune permission internet. Aucune publicité. Aucun suivi. Juste des dés.

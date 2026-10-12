@@ -1,0 +1,16 @@
+Dice Sim 3D macht aus deinem Handy eine Box mit echten, physikalisch simulierten Würfeln - kein Zufallsgenerator, sondern eine echte 3D-Physik-Engine, die Würfel so hüpfen, taumeln und zur Ruhe kommen lässt wie auf einem echten Tisch.
+
+FUNKTIONEN
+
+• Echte Physik statt Zufallszahlen - jeder Würfel taumelt, prallt von Wänden ab und kollidiert mit den anderen Würfeln dank einer selbst entwickelten 3D-Physik-Engine.
+• Schütteln und würfeln - schüttle dein Handy, damit die Würfel taumeln, genau wie bei einem echten Würfelbecher.
+• Den Tisch neigen - neige dein Gerät, um die Kamera mitzuneigen und die Würfel aus einem anderen Winkel zu betrachten.
+• Wähle Farben für die Würfel - tippe auf einen Würfel, um ihm per Farbauswahl seine eigene Farbe zu geben.
+• Wurfverlauf - jeder Wurf wird in einer scrollbaren Liste festgehalten, damit du nie den Überblick verlierst.
+• So viele Würfel hinzufügen, wie du willst - der Raum wächst automatisch mit.
+• Stimmungsvolle Raumfarbe - die Wände des Raums wandern langsam durch einen sanften Farbkreis.
+• Komplett offline - kein Konto, keine Werbung, keine Internetverbindung nötig oder genutzt. Niemals.
+
+Egal ob du für ein Brettspiel schnell würfeln musst, Wahrscheinlichkeit anschaulich machen willst oder einfach gerne physikalisch korrekten Würfeln beim Taumeln zusiehst - Dice Sim 3D ist darauf ausgelegt, sich wie das echte Original anzufühlen.
+
+Keine Internetberechtigung. Keine Werbung. Kein Tracking. Nur Würfel.

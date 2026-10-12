@@ -562,6 +562,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
      */
     @VisibleForTesting
     fun seedForScreenshots(dieColors: List<Int>, historyRollColors: List<List<Int>>) {
+        // Flipping the switch (rather than calling renderView.setCameraTiltEnabled
+        // directly) also updates its own displayed on/off state and persists the
+        // choice exactly like a real tap would - a leaning room, driven by the
+        // emulator's simulated gravity sensor, reads as a bug in a static screenshot
+        // even though it's intentional during real use.
+        findViewById<Switch>(R.id.switch_cameraTilt_activityMain).isChecked = false
         renderView.queueEvent {
             resetDiceOnGlThread() // also spawns the first (default-colored) starting die
             dieColors.firstOrNull()?.let { color ->
