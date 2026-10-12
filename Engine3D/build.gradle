@@ -4,11 +4,13 @@ plugins {
 }
 
 android {
-    compileSdk 32
+    namespace "tfdev.engine3d"
+    compileSdk 36
 
     defaultConfig {
-        minSdk 21
-        targetSdk 32
+        // See app/build.gradle's comment on this same bump (Play Protect requirement).
+        minSdk 24
+        targetSdk 36
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -35,6 +37,8 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.4.2'
     implementation 'com.google.android.material:material:1.6.1'
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    // See app/build.gradle's comment on this same bump - keeping both modules' test
+    // dependency versions in sync avoids a version-resolution mismatch between them.
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }

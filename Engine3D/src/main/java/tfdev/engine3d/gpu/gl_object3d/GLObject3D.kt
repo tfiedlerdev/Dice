@@ -22,9 +22,25 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
     open val drawListLength: Int? = null
     open val uvBuffer: FloatBuffer? = null
     open val normalBuffer: FloatBuffer? = null
+
+    /**
+     * Optional per-vertex value (e.g. which die face 1-6 a vertex belongs to) the
+     * fragment shader can use to vary what it draws per-face within a single draw
+     * call, without a texture. Null means "not used" (plain [color] everywhere).
+     */
+    open val faceValueBuffer: FloatBuffer? = null
     open val lightSource: LightSource? = null
     open val boundingBox: BoundingBox? = null
     val color: FloatArray = floatArrayOf(color.x, color.y, color.z, color.w)
+
+    /** Recolors this object in place - picked up on the next [drawSelf], no [setDirty] needed. */
+    fun setColor(newColor: Vec4) {
+        color[0] = newColor.x
+        color[1] = newColor.y
+        color[2] = newColor.z
+        color[3] = newColor.w
+    }
+
     private fun getObjectLightSource(): LightSource? {
         if (lightSource != null) {
             return lightSource
@@ -35,6 +51,12 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
     fun addChild(obj: GLObject3D) {
         obj.parent = this
         children.add(obj)
+    }
+
+    fun removeChild(obj: GLObject3D) {
+        if (children.remove(obj)) {
+            obj.parent = null
+        }
     }
 
     fun updateSelfAndChild() {
@@ -119,12 +141,12 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
 
             val lightSource = getObjectLightSource()
             if(lightSource!=null){
-                val lightDirectionHandle = glGetUniformLocation(program, "uLightDirection")
-                glUniform3fv(lightDirectionHandle, 1, lightSource.direction)
                 val lightPositionHandle = glGetUniformLocation(program, "uLightPosition")
                 glUniform3fv(lightPositionHandle, 1, lightSource.position)
                 val lightColorHandle = glGetUniformLocation(program, "uLightColor")
                 glUniform4fv(lightColorHandle, 1, lightSource.color)
+                val secondaryDirectionHandle = glGetUniformLocation(program, "uSecondaryLightDirection")
+                glUniform3fv(secondaryDirectionHandle, 1, lightSource.secondaryDirection)
             }
 
             val uvBuffer = uvBuffer
@@ -158,6 +180,21 @@ abstract class GLObject3D(color: Vec4 = Vec4(1f,1f,1f,1f)) : DynamicTransform() 
                     4*3,
                     normalBuffer
                 )
+            }
+            val faceValueBuffer = faceValueBuffer
+            if (faceValueBuffer != null) {
+                val faceValueHandle = glGetAttribLocation(program, "vFaceValue")
+                if (faceValueHandle >= 0) {
+                    glEnableVertexAttribArray(faceValueHandle)
+                    glVertexAttribPointer(
+                        faceValueHandle,
+                        1,
+                        GL_FLOAT,
+                        false,
+                        4,
+                        faceValueBuffer
+                    )
+                }
             }
             // Draw the triangle
             val drawListLength = drawListLength

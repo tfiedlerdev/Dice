@@ -21,3 +21,15 @@ local.properties
 /.idea/deploymentTargetSelector.xml
 /.idea/markdown.xml
 /.idea/runConfigurations.xml
+
+keystore.jks
+keystore.txt
+app/release/
+
+# fastlane (see fastlane/README.md) - the service account key is a secret, never commit it
+fastlane/play-store-credentials.json
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+vendor/bundle

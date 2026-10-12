@@ -1,0 +1,16 @@
+Dice Sim 3D trasforma il tuo telefono in una scatola di dadi reali, simulati fisicamente: non un generatore di numeri casuali, ma un vero motore fisico 3D che fa rimbalzare, rotolare e fermare i dadi proprio come su un tavolo vero.
+
+CARATTERISTICHE
+
+• Fisica reale, non numeri casuali - ogni dado rotola, rimbalza contro le pareti e collide con gli altri dadi grazie a un motore fisico 3D creato da zero.
+• Scuoti per tirare - scuoti il telefono per far rotolare i dadi, proprio come in un vero bussolotto.
+• Inclina il tavolo - inclina il dispositivo per inclinare la fotocamera e osservare i dadi da un'altra angolazione.
+• Scegli un colore per ogni dado - tocca un dado per aprire un selettore di colore e dargli il suo colore personale.
+• Cronologia dei tiri - ogni tiro viene registrato in un elenco scorrevole, così non perdi mai traccia dei risultati.
+• Aggiungi tutti i dadi che vuoi - la stanza cresce automaticamente per farli stare tutti.
+• Colore ambientale della stanza - le pareti della stanza cambiano lentamente seguendo un delicato ciclo di colori.
+• Completamente offline - nessun account, nessuna pubblicità, nessuna connessione internet richiesta o utilizzata. Mai.
+
+Che tu abbia bisogno di un tiro veloce per un gioco da tavolo, voglia spiegare la probabilità o semplicemente ti piaccia guardare dadi fisicamente realistici rotolare, Dice Sim 3D è pensato per sembrare la cosa vera.
+
+Nessun permesso internet. Nessuna pubblicità. Nessun tracciamento. Solo dadi.

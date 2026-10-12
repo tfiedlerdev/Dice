@@ -15,6 +15,15 @@ class Camera(val center: Vec3, eye: Vec3, val up: Vec3, private val onCameraChan
         }
     }
 
+    /** Places the eye along [direction] (need not be normalized) at [distance] from [center]. */
+    fun setEyeDirection(direction: Vec3, distance: Float) {
+        val normalized = direction.normalize()
+        eye.x = center.x + normalized.x * distance
+        eye.y = center.y + normalized.y * distance
+        eye.z = center.z + normalized.z * distance
+        notifyCameraChanged()
+    }
+
 	fun notifyCameraChanged() {
         Matrix4x4.lookAt(eye.xyz, center, up, lookAtMatrix)
         onCameraChanged?.let { it() }

@@ -114,6 +114,15 @@ open class DynamicTransform(
 
         velocity += (gravity + force / mass) * dt
         velocity *= (1f - linearDamping * dt).coerceIn(0f, 1f)
+        // A sustained force (gravity, or an external one like a device tilt) keeps
+        // accelerating a body for as long as nothing stops it, which in free flight -
+        // not touching anything - is correct; this just keeps a runaway (a bug, or a
+        // simply too-strong input) from reaching speeds that tunnel through thin
+        // geometry in a single substep instead of ever getting caught by collision.
+        val speed = velocity.length()
+        if (speed > MAX_LINEAR_SPEED) {
+            velocity *= MAX_LINEAR_SPEED / speed
+        }
         val deltaPos = velocity * dt
         pos += deltaPos
 
@@ -121,6 +130,14 @@ open class DynamicTransform(
         val angularAcceleration = (Iinv * Vec4(torque.x, torque.y, torque.z, 0f)).xyz
         omega += angularAcceleration * dt
         omega *= (1f - angularDamping * dt).coerceIn(0f, 1f)
+        // Same reasoning as the linear clamp above: without this, a sustained torque
+        // eventually spins a body fast enough that a single substep's rotation is no
+        // longer "small" - which is what the collision/contact machinery assumes - and
+        // it starts missing/misjudging contacts instead of just visibly tumbling fast.
+        val uncappedOmegaLength = omega.length()
+        if (uncappedOmegaLength > MAX_ANGULAR_SPEED) {
+            omega *= MAX_ANGULAR_SPEED / uncappedOmegaLength
+        }
 
         val omegaLength = omega.length()
         if (omegaLength > 1e-6f) {
@@ -159,5 +176,10 @@ open class DynamicTransform(
     fun correctPosition(correction: Vec3) {
         if (isStatic) return
         pos += correction
+    }
+
+    companion object {
+        private const val MAX_LINEAR_SPEED = 15f // m/s
+        private const val MAX_ANGULAR_SPEED = 40f // rad/s, ~6.4 revolutions/s
     }
 }
